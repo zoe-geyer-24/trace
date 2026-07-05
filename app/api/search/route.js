@@ -14,7 +14,7 @@ export async function GET(request) {
   try {
     const res = await fetch(url, {
       headers: {
-        "Authorization": "Bearer " + FOURSQUARE_KEY,
+        "Authorization": + FOURSQUARE_KEY,
         "X-Places-Api-Version": "2025-06-17",
         "accept": "application/json"
       }
