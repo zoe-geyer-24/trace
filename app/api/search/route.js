@@ -5,17 +5,19 @@ export async function GET(request) {
   const q = searchParams.get("q") || "";
   if (q.trim().length < 2) return Response.json({ results: [] });
 
-  const url = "https://api.foursquare.com/v3/places/search"
+  const url = "https://places-api.foursquare.com/places/search"
     + "?query=" + encodeURIComponent(q)
     + "&ll=40.7580,-73.9855"
     + "&radius=20000"
-    + "&categories=13065"
-    + "&limit=8"
-    + "&fields=fsq_id,name,location,geocodes";
+    + "&limit=8";
 
   try {
     const res = await fetch(url, {
-      headers: { "Authorization": FOURSQUARE_KEY, "Accept": "application/json" }
+      headers: {
+        "Authorization": "Bearer " + FOURSQUARE_KEY,
+        "X-Places-Api-Version": "2025-06-17",
+        "accept": "application/json"
+      }
     });
     if (!res.ok) {
       const text = await res.text();
@@ -24,12 +26,12 @@ export async function GET(request) {
     const data = await res.json();
     const results = (data.results || []).map(function (p) {
       return {
-        fsq_id: p.fsq_id,
+        fsq_id: p.fsq_place_id || p.fsq_id,
         name: p.name,
-        neighborhood: (p.location && p.location.neighborhood && p.location.neighborhood[0]) || (p.location && p.location.locality) || "",
+        neighborhood: (p.location && p.location.locality) || "",
         address: (p.location && p.location.formatted_address) || "",
-        lat: p.geocodes && p.geocodes.main ? p.geocodes.main.latitude : null,
-        lng: p.geocodes && p.geocodes.main ? p.geocodes.main.longitude : null
+        lat: p.latitude != null ? p.latitude : (p.geocodes && p.geocodes.main ? p.geocodes.main.latitude : null),
+        lng: p.longitude != null ? p.longitude : (p.geocodes && p.geocodes.main ? p.geocodes.main.longitude : null)
       };
     });
     return Response.json({ results: results });
