@@ -76,7 +76,7 @@ export default function BrowsePage() {
               {fsqResults.map(p => (
                 <div key={p.fsq_id} className="suggest-item" onMouseDown={() => pickPlace(p)}>
                   <div className="suggest-name">{p.name}</div>
-                  <div className="suggest-meta">{p.neighborhood || p.address}</div>
+                  <div className="suggest-meta">{p.address || p.neighborhood}</div>
                 </div>
               ))}
             </div>
