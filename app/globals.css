@@ -153,3 +153,4 @@ a { color:inherit; text-decoration:none; }
 .suggest-item:hover { background:rgba(200,115,46,.08); }
 .suggest-name { font-family:"Iowan Old Style",Georgia,serif; font-size:16px; font-weight:700; }
 .suggest-meta { font-family:"Helvetica Neue",Arial,sans-serif; font-size:11px; color:#8a7d6b; text-transform:uppercase; letter-spacing:.04em; margin-top:2px; }
+.rank-badge { font-family:"Iowan Old Style",Georgia,serif; font-size:26px; font-weight:800; color:var(--rye); min-width:34px; text-align:center; }
