@@ -27,6 +27,7 @@ export default function Header() {
       </header>
       <nav className="nav">
         {tab("/", "Browse")}
+        {tab("/rankings", "Rankings")}
         {tab("/map", "Map")}
         {tab("/following", "Following")}
         {tab("/account", "My account")}
