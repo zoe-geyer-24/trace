@@ -29,7 +29,7 @@ export async function GET(request) {
         fsq_id: p.fsq_place_id || p.fsq_id,
         name: p.name,
         neighborhood: (p.location && p.location.locality) || "",
-        address: (p.location && p.location.formatted_address) || "",
+        address: (p.location && p.location.address || p.location.formatted_address) || "",
         lat: p.latitude != null ? p.latitude : (p.geocodes && p.geocodes.main ? p.geocodes.main.latitude : null),
         lng: p.longitude != null ? p.longitude : (p.geocodes && p.geocodes.main ? p.geocodes.main.longitude : null)
       };
