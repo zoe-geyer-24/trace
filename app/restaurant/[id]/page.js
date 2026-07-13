@@ -4,8 +4,9 @@ import { useParams, useRouter } from "next/navigation";
 import Header from "../../../components/Header";
 import { fmtAvg } from "../../../components/ui";
 import {
-  getRestaurant, getReviewsForRestaurant, getMyProfile, getMyReview,
-  upsertReview, deleteReview, getMyLists, toggleList, getFollowing, follow, unfollow
+  getRestaurant, getReviewsForRestaurant, getMyProfile,
+  upsertReview, deleteReview, getMyLists, toggleList, getFollowing, follow, unfollow,
+  uploadReviewPhoto
 } from "../../../lib/db";
 
 export default function RestaurantPage() {
@@ -101,6 +102,7 @@ function ReviewCard({ r, me, following, onFollow, onDelete }) {
   if (r.shared_fryer) tags.push(["bad", "⚠ Shared fryer"]);
   if (r.gf_menu) tags.push(["neutral", "GF menu"]);
   if (r.celiac_aware) tags.push(["good", "Celiac-aware staff"]);
+  if (r.staff_unsure) tags.push(["bad", "⚠ Staff unsure — didn't feel safe"]);
   const prof = r.profiles || {};
   const mine = me && me.id === r.user_id;
   const amFollowing = following.includes(r.user_id);
@@ -119,86 +121,4 @@ function ReviewCard({ r, me, following, onFollow, onDelete }) {
           <div className="score-box"><div className="score-label">GF Safety</div><div className="score-num gf-num">{r.gf_safety}<span className="of">/10</span></div></div>
         </div>
       </div>
-      {tags.length > 0 && <div className="safety-tags">{tags.map((t, i) => <span key={i} className={"tag " + t[0]}>{t[1]}</span>)}</div>}
-      {r.ordered && <div className="ordered"><span className="lbl">Ordered</span>{r.ordered}</div>}
-      {r.body && <div className="review-body">{r.body}</div>}
-      {r.photo_url && <img className="rev-photo" src={r.photo_url} alt="" onError={e => e.target.style.display = "none"} />}
-      <div className="review-foot">
-        <span>{new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-        {mine && <button className="del" onClick={onDelete}>Delete mine</button>}
-      </div>
-    </div>
-  );
-}
-
-function ReviewModal({ rest, me, existing, onClose, onSaved }) {
-  const [overall, setOverall] = useState(existing?.overall ?? 8);
-  const [gf, setGf] = useState(existing?.gf_safety ?? 8);
-  const [reaction, setReaction] = useState(existing?.reaction ?? "");
-  const [ordered, setOrdered] = useState(existing?.ordered ?? "");
-  const [photo, setPhoto] = useState(existing?.photo_url ?? "");
-  const [body, setBody] = useState(existing?.body ?? "");
-  const [flags, setFlags] = useState({
-    dedicated_kitchen: existing?.dedicated_kitchen ?? false,
-    dedicated_fryer: existing?.dedicated_fryer ?? false,
-    shared_fryer: existing?.shared_fryer ?? false,
-    gf_menu: existing?.gf_menu ?? false,
-    celiac_aware: existing?.celiac_aware ?? false,
-  });
-  const [err, setErr] = useState("");
-
-  async function save() {
-    const rec = {
-      restaurant_id: rest.id, user_id: me.id,
-      overall: parseInt(overall), gf_safety: parseInt(gf),
-      reaction: reaction || null, ordered: ordered.trim(), photo_url: photo.trim(), body: body.trim(),
-      ...flags
-    };
-    const { error } = await upsertReview(rec);
-    if (error) { setErr(error); return; }
-    onSaved();
-  }
-  const setReact = v => setReaction(reaction === v ? "" : v);
-  const toggle = k => setFlags({ ...flags, [k]: !flags[k] });
-
-  return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
-        <h2>{existing ? "Edit your review" : "Rate this place"}</h2>
-        <div className="hint">Be specific about cross-contamination — that's what other celiacs are here for.</div>
-        <div className="row">
-          <div className="field"><label>Overall (0–10)</label>
-            <select value={overall} onChange={e => setOverall(e.target.value)}>{[...Array(11)].map((_, i) => <option key={i} value={10 - i}>{10 - i}</option>)}</select></div>
-          <div className="field"><label>GF safety (0–10)</label>
-            <select value={gf} onChange={e => setGf(e.target.value)}>{[...Array(11)].map((_, i) => <option key={i} value={10 - i}>{10 - i}</option>)}</select></div>
-        </div>
-        <div className="field">
-          <label>Did you get sick?</label>
-          <div className="reaction-pick">
-            <button type="button" className={reaction === "ok" ? "on-ok" : ""} onClick={() => setReact("ok")}>No reaction — I was fine</button>
-            <button type="button" className={reaction === "bad" ? "on-bad" : ""} onClick={() => setReact("bad")}>I got glutened</button>
-          </div>
-          <div className="sub">The single most useful thing you can tell another celiac. Leave both off if you'd rather not say.</div>
-        </div>
-        <div className="field"><label>What I ordered</label><input value={ordered} onChange={e => setOrdered(e.target.value)} placeholder="e.g. Cacio e pepe + the fritto misto" /></div>
-        <div className="field"><label>Photo link (optional)</label><input value={photo} onChange={e => setPhoto(e.target.value)} placeholder="Paste an image URL" /></div>
-        <div className="field">
-          <label>Safety facts</label>
-          <div className="checks">
-            <label className="check"><input type="checkbox" checked={flags.dedicated_kitchen} onChange={() => toggle("dedicated_kitchen")} /> 100% dedicated gluten-free kitchen</label>
-            <label className="check"><input type="checkbox" checked={flags.dedicated_fryer} onChange={() => toggle("dedicated_fryer")} /> Dedicated fryer (no shared oil)</label>
-            <label className="check"><input type="checkbox" checked={flags.shared_fryer} onChange={() => toggle("shared_fryer")} /> Shared fryer — fried items not safe</label>
-            <label className="check"><input type="checkbox" checked={flags.gf_menu} onChange={() => toggle("gf_menu")} /> Marked GF menu</label>
-            <label className="check"><input type="checkbox" checked={flags.celiac_aware} onChange={() => toggle("celiac_aware")} /> Staff knew their stuff about celiac</label>
-          </div>
-        </div>
-        <div className="field"><label>Your review</label><textarea value={body} onChange={e => setBody(e.target.value)} placeholder="How careful were they? Did you react? Would you go back?" /></div>
-        {err && <div className="err">{err}</div>}
-        <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-sage" onClick={save}>Post review</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+      {tags.length > 0 && <div className="safety-tags">{tags.map((t,
