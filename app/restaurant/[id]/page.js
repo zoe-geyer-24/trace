@@ -121,4 +121,109 @@ function ReviewCard({ r, me, following, onFollow, onDelete }) {
           <div className="score-box"><div className="score-label">GF Safety</div><div className="score-num gf-num">{r.gf_safety}<span className="of">/10</span></div></div>
         </div>
       </div>
-      {tags.length > 0 && <div className="safety-tags">{tags.map((t,
+      {tags.length > 0 && <div className="safety-tags">{tags.map((t, i) => <span key={i} className={"tag " + t[0]}>{t[1]}</span>)}</div>}
+      {r.ordered && <div className="ordered"><span className="lbl">Ordered</span>{r.ordered}</div>}
+      {r.body && <div className="review-body">{r.body}</div>}
+      {r.photo_url && <img className="rev-photo" src={r.photo_url} alt="" onError={e => e.target.style.display = "none"} />}
+      <div className="review-foot">
+        <span>{new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+        {mine && <button className="del" onClick={onDelete}>Delete mine</button>}
+      </div>
+    </div>
+  );
+}
+
+function ReviewModal({ rest, me, existing, onClose, onSaved }) {
+  const [overall, setOverall] = useState(existing?.overall ?? 8);
+  const [gf, setGf] = useState(existing?.gf_safety ?? 8);
+  const [reaction, setReaction] = useState(existing?.reaction ?? "");
+  const [ordered, setOrdered] = useState(existing?.ordered ?? "");
+  const [photoUrl, setPhotoUrl] = useState(existing?.photo_url ?? "");
+  const [uploading, setUploading] = useState(false);
+  const [body, setBody] = useState(existing?.body ?? "");
+  const [flags, setFlags] = useState({
+    dedicated_kitchen: existing?.dedicated_kitchen ?? false,
+    dedicated_fryer: existing?.dedicated_fryer ?? false,
+    shared_fryer: existing?.shared_fryer ?? false,
+    gf_menu: existing?.gf_menu ?? false,
+    celiac_aware: existing?.celiac_aware ?? false,
+    staff_unsure: existing?.staff_unsure ?? false,
+  });
+  const [err, setErr] = useState("");
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true); setErr("");
+    const res = await uploadReviewPhoto(file, me.id);
+    setUploading(false);
+    if (res.error) { setErr("Photo upload failed: " + res.error); return; }
+    setPhotoUrl(res.url);
+  }
+
+  async function save() {
+    const rec = {
+      restaurant_id: rest.id, user_id: me.id,
+      overall: parseInt(overall), gf_safety: parseInt(gf),
+      reaction: reaction || null, ordered: ordered.trim(), photo_url: photoUrl || null, body: body.trim(),
+      ...flags
+    };
+    const { error } = await upsertReview(rec);
+    if (error) { setErr(error); return; }
+    onSaved();
+  }
+  const setReact = v => setReaction(reaction === v ? "" : v);
+  const toggle = k => setFlags({ ...flags, [k]: !flags[k] });
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <h2>{existing ? "Edit your review" : "Rate this place"}</h2>
+        <div className="hint">Be specific about cross-contamination — that's what other celiacs are here for.</div>
+        <div className="row">
+          <div className="field"><label>Overall (0–10)</label>
+            <select value={overall} onChange={e => setOverall(e.target.value)}>{[...Array(11)].map((_, i) => <option key={i} value={10 - i}>{10 - i}</option>)}</select></div>
+          <div className="field"><label>GF safety (0–10)</label>
+            <select value={gf} onChange={e => setGf(e.target.value)}>{[...Array(11)].map((_, i) => <option key={i} value={10 - i}>{10 - i}</option>)}</select></div>
+        </div>
+        <div className="field">
+          <label>Did you get sick?</label>
+          <div className="reaction-pick">
+            <button type="button" className={reaction === "ok" ? "on-ok" : ""} onClick={() => setReact("ok")}>No reaction — I was fine</button>
+            <button type="button" className={reaction === "bad" ? "on-bad" : ""} onClick={() => setReact("bad")}>I got glutened</button>
+          </div>
+          <div className="sub">Optional, but the most useful thing you can tell another celiac.</div>
+        </div>
+        <div className="field"><label>What I ordered</label><input value={ordered} onChange={e => setOrdered(e.target.value)} placeholder="e.g. Cacio e pepe + the fritto misto" /></div>
+        <div className="field">
+          <label>Photo (optional)</label>
+          <input type="file" accept="image/*" onChange={handleFile} />
+          {uploading && <div className="sub">Uploading…</div>}
+          {photoUrl && !uploading && (
+            <div style={{ marginTop: 10 }}>
+              <img src={photoUrl} alt="" style={{ maxWidth: "100%", maxHeight: 180, borderRadius: 3, border: "1px solid var(--rule)", display: "block" }} />
+              <button className="btn-link" style={{ marginTop: 6 }} onClick={() => setPhotoUrl("")}>Remove photo</button>
+            </div>
+          )}
+        </div>
+        <div className="field">
+          <label>Safety facts (optional)</label>
+          <div className="checks">
+            <label className="check"><input type="checkbox" checked={flags.dedicated_kitchen} onChange={() => toggle("dedicated_kitchen")} /> 100% dedicated gluten-free kitchen</label>
+            <label className="check"><input type="checkbox" checked={flags.dedicated_fryer} onChange={() => toggle("dedicated_fryer")} /> Dedicated fryer (no shared oil)</label>
+            <label className="check"><input type="checkbox" checked={flags.shared_fryer} onChange={() => toggle("shared_fryer")} /> Shared fryer — fried items not safe</label>
+            <label className="check"><input type="checkbox" checked={flags.gf_menu} onChange={() => toggle("gf_menu")} /> Marked GF menu</label>
+            <label className="check"><input type="checkbox" checked={flags.celiac_aware} onChange={() => toggle("celiac_aware")} /> Staff knew their stuff about celiac</label>
+            <label className="check"><input type="checkbox" checked={flags.staff_unsure} onChange={() => toggle("staff_unsure")} /> Staff were unsure about celiac — didn't feel safe eating there</label>
+          </div>
+        </div>
+        <div className="field"><label>Your review</label><textarea value={body} onChange={e => setBody(e.target.value)} placeholder="How careful were they? Did you react? Would you go back?" /></div>
+        {err && <div className="err">{err}</div>}
+        <div className="modal-actions">
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-sage" onClick={save} disabled={uploading}>Post review</button>
+        </div>
+      </div>
+    </div>
+  );
+}
