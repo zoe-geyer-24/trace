@@ -105,8 +105,13 @@ export default function MapPage() {
         <div style={{ position: "relative" }}>
           <div id="map" ref={mapRef}></div>
 
-          <button className="best-near-btn" onClick={findBestNearYou} disabled={findingBest}>
-            {findingBest ? "Finding…" : "★ Best near you"}
+          <button className="best-near-btn" onClick={() => router.push("/near-me")}>
+            <span className="bn-icon">◎</span>
+            <span className="bn-text">
+              <span className="bn-title">Best near you</span>
+              <span className="bn-sub">Top 5 within 2 miles</span>
+            </span>
+            <span className="bn-arrow">→</span>
           </button>
 
           {showBest && (
