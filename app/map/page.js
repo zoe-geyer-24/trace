@@ -30,8 +30,7 @@ export default function MapPage() {
 
   useEffect(() => { drawMarkers(); }, [mode]);
 
-  function color(v) { if (v == null) return "#c4b9a3"; if (v >= 8) return "#4a6b54"; if (v >= 5) return "#c8732e"; return "#b83227"; }
-
+function color(v) { if (v == null) return "#c4b9a3"; if (v >= 7) return "#4a6b54"; if (v >= 5) return "#d4a017"; return "#b83227"; }
   function drawMarkers() {
     if (!layerRef.current || !rests) return;
     const L = require("leaflet");
@@ -140,10 +139,9 @@ export default function MapPage() {
         </div>
 
         <div className="map-legend">
-          <span><span className="legend-dot" style={{ background: "#4a6b54" }}></span>Safe / great (8–10)</span>
-          <span><span className="legend-dot" style={{ background: "#c8732e" }}></span>Mixed (5–7.9)</span>
-          <span><span className="legend-dot" style={{ background: "#b83227" }}></span>Risky / poor (0–4.9)</span>
-          <span><span className="legend-dot" style={{ background: "#c4b9a3" }}></span>No ratings yet</span>
+          <span><span className="legend-dot" style={{ background: "#4a6b54" }}></span>Good (7–10)</span>
+          <span><span className="legend-dot" style={{ background: "#d4a017" }}></span>Mixed (5–6.9)</span>
+          <span><span className="legend-dot" style={{ background: "#b83227" }}></span>Poor (0–4.9)</span>
         </div>
       </div>
     </div>
