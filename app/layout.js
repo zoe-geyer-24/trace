@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Trace — gluten-free NYC, rated by people who can't cheat",
-  description: "Restaurants rated for how good they are and how safe they are for celiacs.",
+  title: "Trace — Gluten-Free New York",
+  description: "NYC restaurants rated by people who can't cheat.",
 };
 
 export default function RootLayout({ children }) {
@@ -15,4 +15,3 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
-
