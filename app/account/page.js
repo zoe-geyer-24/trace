@@ -1,5 +1,3 @@
-
-Account page · JS
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -9,12 +7,12 @@ import {
   getMyProfile, getMyReviews, getMyLists, getFollowing, getFollowerCount,
   getRestaurants, uploadAvatar, updateProfile
 } from "../../lib/db";
- 
+
 const SENSITIVITIES = [
   "Celiac disease", "Non-celiac gluten sensitivity", "Wheat allergy",
   "Gluten ataxia", "Dermatitis herpetiformis", "Avoiding by choice"
 ];
- 
+
 export default function AccountPage() {
   const [me, setMe] = useState(null);
   const [loaded, setLoaded] = useState(false);
@@ -26,7 +24,7 @@ export default function AccountPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [shareMsg, setShareMsg] = useState("");
   const router = useRouter();
- 
+
   async function load() {
     const p = await getMyProfile(); setMe(p); setLoaded(true);
     if (!p) return;
@@ -37,7 +35,7 @@ export default function AccountPage() {
     setRests(await getRestaurants());
   }
   useEffect(() => { load(); }, []);
- 
+
   function shareProfile() {
     const url = window.location.origin + "/u/" + encodeURIComponent(me.username);
     if (navigator.share) {
@@ -49,7 +47,7 @@ export default function AccountPage() {
       });
     }
   }
- 
+
   if (loaded && !me) return (
     <div className="wrap"><Header />
       <div className="empty"><div className="big">You're not signed in.</div>Create an account to rate places and build your lists.<br /><br />
@@ -57,9 +55,9 @@ export default function AccountPage() {
     </div>
   );
   if (!me) return <div className="wrap"><Header /><div className="loading">Loading…</div></div>;
- 
+
   const byId = id => rests.find(r => r.id === id);
- 
+
   const ListCard = ({ id }) => {
     const r = byId(id); if (!r) return null;
     return (
@@ -73,12 +71,12 @@ export default function AccountPage() {
       </div>
     );
   };
- 
+
   return (
     <div className="wrap">
       <Header />
       <div className="view">
- 
+
         <div className="profile-card">
           <div className="profile-top">
             <div className="avatar-wrap">
@@ -92,13 +90,13 @@ export default function AccountPage() {
               {me.bio && <div className="profile-bio">{me.bio}</div>}
             </div>
           </div>
- 
+
           <div className="profile-actions">
             <button className="btn btn-ghost" onClick={() => setShowEdit(true)}>Edit profile</button>
             <button className="btn btn-ghost" onClick={shareProfile}>Share profile</button>
             {shareMsg && <span className="share-msg">{shareMsg}</span>}
           </div>
- 
+
           <div className="acct-stats">
             <div className="stat"><div className="num">{reviewCount}</div><div className="lbl">Places rated</div></div>
             <div className="stat"><div className="num">{lists.been.length}</div><div className="lbl">Been there</div></div>
@@ -107,9 +105,9 @@ export default function AccountPage() {
             <div className="stat"><div className="num">{followerN}</div><div className="lbl">Followers</div></div>
           </div>
         </div>
- 
+
         <div className="section-title">My lists</div>
- 
+
         <div className="list-block">
           <div className="list-block-head">
             <span className="list-block-name">Want to go</span>
@@ -119,7 +117,7 @@ export default function AccountPage() {
             ? <div className="rlist">{lists.want.map(id => <ListCard key={id} id={id} />)}</div>
             : <div className="list-empty">Nothing saved yet — hit "Want to go" on a restaurant.</div>}
         </div>
- 
+
         <div className="list-block">
           <div className="list-block-head">
             <span className="list-block-name">Been there</span>
@@ -130,12 +128,12 @@ export default function AccountPage() {
             : <div className="list-empty">Mark places you've visited from their page.</div>}
         </div>
       </div>
- 
+
       {showEdit && <EditProfileModal me={me} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); load(); }} />}
     </div>
   );
 }
- 
+
 function EditProfileModal({ me, onClose, onSaved }) {
   const [username, setUsername] = useState(me.username || "");
   const [sensitivity, setSensitivity] = useState(me.sensitivity || SENSITIVITIES[0]);
@@ -144,7 +142,7 @@ function EditProfileModal({ me, onClose, onSaved }) {
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
- 
+
   async function handleFile(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -154,7 +152,7 @@ function EditProfileModal({ me, onClose, onSaved }) {
     if (res.error) { setErr("Photo upload failed: " + res.error); return; }
     setAvatarUrl(res.url);
   }
- 
+
   async function save() {
     if (!username.trim()) { setErr("Username can't be empty."); return; }
     setSaving(true); setErr("");
@@ -168,13 +166,13 @@ function EditProfileModal({ me, onClose, onSaved }) {
     if (error) { setErr(error.includes("duplicate") ? "That username is taken." : error); return; }
     onSaved();
   }
- 
+
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <h2>Edit profile</h2>
         <div className="hint">This is what other celiacs see when they find you.</div>
- 
+
         <div className="field">
           <label>Profile photo</label>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -188,21 +186,21 @@ function EditProfileModal({ me, onClose, onSaved }) {
             </div>
           </div>
         </div>
- 
+
         <div className="field"><label>Username</label><input value={username} onChange={e => setUsername(e.target.value)} /></div>
- 
+
         <div className="field">
           <label>Your gluten sensitivity</label>
           <select value={sensitivity} onChange={e => setSensitivity(e.target.value)}>
             {SENSITIVITIES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
- 
+
         <div className="field">
           <label>Bio</label>
           <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="A line about how you eat — how careful you are, what you look for, where you're based." style={{ minHeight: 80 }} />
         </div>
- 
+
         {err && <div className="err">{err}</div>}
         <div className="modal-actions">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
@@ -212,4 +210,3 @@ function EditProfileModal({ me, onClose, onSaved }) {
     </div>
   );
 }
- 
