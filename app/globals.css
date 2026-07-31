@@ -229,5 +229,16 @@ a { color:inherit; text-decoration:none; }
 .safety-group-head.unsafe { background:rgba(184,50,39,.11); color:var(--alarm); }
 .safety-group-count { font-size:11px; font-weight:700; background:currentColor; color:var(--paper); border-radius:100px; padding:1px 9px; margin-left:auto; }
 .safety-group-head.safe .safety-group-count { color:#fff; }
-
+/* Sentiment + comparison review steps */
+.sentiment-pick { display:flex; flex-direction:column; gap:10px; margin:20px 0; }
+.sent-btn { font-family:"Helvetica Neue",Arial,sans-serif; font-size:15px; font-weight:700; padding:16px; border:1px solid var(--rule); background:var(--card); border-radius:10px; cursor:pointer; transition:all .15s; }
+.sent-btn.liked:hover { border-color:var(--sage); background:rgba(74,107,84,.08); }
+.sent-btn.fine:hover { border-color:#d4a017; background:rgba(212,160,23,.1); }
+.sent-btn.disliked:hover { border-color:var(--alarm); background:rgba(184,50,39,.07); }
+.cmp-row { display:flex; align-items:stretch; gap:12px; margin:24px 0; }
+.cmp-card { flex:1; font-family:inherit; padding:24px 16px; border:1px solid var(--rule); background:var(--card); border-radius:12px; cursor:pointer; transition:all .15s; text-align:center; }
+.cmp-card:hover { border-color:var(--rye); background:rgba(200,115,46,.06); transform:translateY(-2px); }
+.cmp-name { font-family:"Iowan Old Style",Georgia,serif; font-size:19px; font-weight:800; margin-bottom:6px; }
+.cmp-tag { font-family:"Helvetica Neue",Arial,sans-serif; font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#8a7d6b; }
+.cmp-vs { display:flex; align-items:center; font-family:"Iowan Old Style",Georgia,serif; font-style:italic; font-size:15px; color:#8a7d6b; }
 
