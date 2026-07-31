@@ -201,7 +201,27 @@ a { color:inherit; text-decoration:none; }
   .best-near-btn{bottom:14px;right:14px;padding:11px 15px}
   .profile-top{flex-direction:column;align-items:flex-start;gap:16px}
 }
-
+/* Account redesign v2 */
+.pcard { background:var(--card); border:1px solid var(--rule); border-radius:16px; padding:32px; box-shadow:0 2px 0 var(--shadow); }
+.pcard-top { display:flex; align-items:center; gap:20px; }
+.pavatar { width:88px; height:88px; border-radius:50%; object-fit:cover; border:1px solid var(--rule); display:block; flex-shrink:0; }
+.pavatar-ph { display:flex; align-items:center; justify-content:center; background:var(--rye); color:var(--paper); font-family:"Iowan Old Style",Georgia,serif; font-size:38px; font-weight:800; }
+.pcard-id { flex:1; min-width:0; }
+.pname { font-size:28px; font-weight:800; letter-spacing:-.01em; margin:0 0 8px; }
+.psens-pill { display:inline-block; background:rgba(200,115,46,.13); color:var(--rye-deep); font-family:"Helvetica Neue",Arial,sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; padding:4px 12px; border-radius:100px; }
+.pbio { font-family:"Helvetica Neue",Arial,sans-serif; font-size:14px; color:#6b6052; margin-top:12px; line-height:1.5; }
+.pcard-actions { display:flex; gap:10px; align-items:center; margin-top:24px; }
+.pbtn { flex:1; font-family:"Helvetica Neue",Arial,sans-serif; font-size:13px; font-weight:700; padding:12px; border:1px solid var(--rule); background:none; color:#6b6052; border-radius:10px; cursor:pointer; transition:all .15s; }
+.pbtn:hover { border-color:var(--ink); color:var(--ink); background:rgba(200,115,46,.04); }
+.stat-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:20px 0 8px; }
+.stat-tile { background:rgba(200,115,46,.06); border-radius:12px; padding:16px 8px; text-align:center; }
+.stat-num { font-size:28px; font-weight:800; color:var(--rye-deep); line-height:1; }
+.stat-lbl { font-family:"Helvetica Neue",Arial,sans-serif; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:#8a7d6b; margin-top:5px; }
+@media (max-width:560px){
+  .pcard-top{flex-direction:column;align-items:flex-start;gap:16px}
+  .stat-grid{grid-template-columns:repeat(3,1fr)}
+  .pcard{padding:24px}
+}
 
 
 
