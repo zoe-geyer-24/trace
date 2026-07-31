@@ -8,12 +8,28 @@ import {
   getPeople, getFollowing, follow, unfollow
 } from "../lib/db";
 
+const RECENT_KEY = { restaurants: "trace_recent_rest", people: "trace_recent_people" };
+
+function loadRecents(mode) {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY[mode]) || "[]"); } catch { return []; }
+}
+function saveRecent(mode, term) {
+  if (!term || !term.trim()) return;
+  try {
+    const cur = loadRecents(mode).filter(t => t.toLowerCase() !== term.toLowerCase());
+    cur.unshift(term.trim());
+    localStorage.setItem(RECENT_KEY[mode], JSON.stringify(cur.slice(0, 6)));
+  } catch {}
+}
+
 export default function BrowsePage() {
   const [mode, setMode] = useState("restaurants");
   const [rests, setRests] = useState([]);
   const [search, setSearch] = useState("");
   const [fsqResults, setFsqResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [recents, setRecents] = useState([]);
   const [neighborhood, setNeighborhood] = useState("");
   const [cuisine, setCuisine] = useState("");
   const [sort, setSort] = useState("gf");
@@ -26,12 +42,11 @@ export default function BrowsePage() {
 
   useEffect(() => {
     getRestaurants().then(setRests);
-    getMyProfile().then(async p => {
-      setMe(p);
-      if (p) setFollowing(await getFollowing(p.id));
-    });
+    getMyProfile().then(async p => { setMe(p); if (p) setFollowing(await getFollowing(p.id)); });
     getPeople().then(setPeople);
   }, []);
+
+  useEffect(() => { setRecents(loadRecents(mode)); }, [mode]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -48,6 +63,7 @@ export default function BrowsePage() {
   }, [search]);
 
   async function pickPlace(p) {
+    saveRecent("restaurants", search);
     const rec = await findOrCreateFromFoursquare(p);
     if (rec && rec.id) router.push("/restaurant/" + rec.id);
     else if (rec && rec.error) alert("Sorry — couldn't open that place. " + rec.error);
@@ -58,8 +74,7 @@ export default function BrowsePage() {
   const cuisines = [...new Set(rated.map(r => r.cuisine).filter(Boolean))].sort();
 
   let filtered = rated.filter(r =>
-    (!neighborhood || r.neighborhood === neighborhood) &&
-    (!cuisine || r.cuisine === cuisine)
+    (!neighborhood || r.neighborhood === neighborhood) && (!cuisine || r.cuisine === cuisine)
   );
   filtered.sort((a, b) => {
     if (sort === "gf") return (b.scores.avg_gf ?? -1) - (a.scores.avg_gf ?? -1);
@@ -78,34 +93,56 @@ export default function BrowsePage() {
     setFollowing(await getFollowing(me.id));
   }
 
+  function switchMode(m) { setMode(m); setSearch(""); setPeopleQuery(""); setFocused(false); setFsqResults([]); }
+
+  const curTerm = mode === "restaurants" ? search : peopleQuery;
+  const showRecents = focused && curTerm.trim().length < 2 && recents.length > 0;
+
   return (
     <div className="wrap">
       <Header />
       <div className="view">
 
-        <div className="map-toggle" style={{ marginBottom: 22 }}>
-          <button className={"gf " + (mode === "restaurants" ? "on" : "")} onClick={() => setMode("restaurants")}>Restaurants</button>
-          <button className={"overall " + (mode === "people" ? "on" : "")} onClick={() => setMode("people")}>People</button>
+        <div className="map-toggle" style={{ marginBottom: 16 }}>
+          <button className={"gf " + (mode === "restaurants" ? "on" : "")} onClick={() => switchMode("restaurants")}>Restaurants</button>
+          <button className={"overall " + (mode === "people" ? "on" : "")} onClick={() => switchMode("people")}>People</button>
+        </div>
+
+        <div style={{ position: "relative", marginBottom: 16 }}>
+          <input className="search" style={{ width: "100%" }}
+            value={curTerm}
+            onChange={e => mode === "restaurants" ? setSearch(e.target.value) : setPeopleQuery(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setTimeout(() => setFocused(false), 150)}
+            placeholder={mode === "restaurants" ? "Search any NYC restaurant to review…" : "Search people by username…"} />
+
+          {showRecents && (
+            <div className="suggest-box">
+              <div className="suggest-item" style={{ color: "#8a7d6b", fontSize: 11, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 700 }}>Recent searches</div>
+              {recents.map((t, i) => (
+                <div key={i} className="suggest-item" onMouseDown={() => mode === "restaurants" ? setSearch(t) : setPeopleQuery(t)}>
+                  <div className="suggest-name" style={{ fontSize: 15 }}>↩ {t}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {mode === "restaurants" && search.trim().length >= 2 && (
+            <div className="suggest-box">
+              {searching && <div className="suggest-item" style={{ color: "#8a7d6b" }}>Searching…</div>}
+              {!searching && fsqResults.length === 0 && <div className="suggest-item" style={{ color: "#8a7d6b" }}>No matches found.</div>}
+              {fsqResults.map(p => (
+                <div key={p.fsq_id} className="suggest-item" onMouseDown={() => pickPlace(p)}>
+                  <div className="suggest-name">{p.name}</div>
+                  <div className="suggest-meta">{p.address || p.neighborhood}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {mode === "restaurants" ? (
           <>
-            <div style={{ position: "relative", marginBottom: 16 }}>
-              <input className="search" style={{ width: "100%" }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search any NYC restaurant to review…" />
-              {search.trim().length >= 2 && (
-                <div className="suggest-box">
-                  {searching && <div className="suggest-item" style={{ color: "#8a7d6b" }}>Searching…</div>}
-                  {!searching && fsqResults.length === 0 && <div className="suggest-item" style={{ color: "#8a7d6b" }}>No matches found.</div>}
-                  {fsqResults.map(p => (
-                    <div key={p.fsq_id} className="suggest-item" onMouseDown={() => pickPlace(p)}>
-                      <div className="suggest-name">{p.name}</div>
-                      <div className="suggest-meta">{p.address || p.neighborhood}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
             <div className="filterbar">
               <select value={neighborhood} onChange={e => setNeighborhood(e.target.value)}>
                 <option value="">All neighborhoods</option>
@@ -140,36 +177,33 @@ export default function BrowsePage() {
                 </div>}
           </>
         ) : (
-          <>
-            <input className="search" style={{ width: "100%", marginBottom: 18 }} value={peopleQuery} onChange={e => setPeopleQuery(e.target.value)} placeholder="Search people by username…" />
-            {filteredPeople.length === 0
-              ? <div className="empty"><div className="big">No one found.</div>Try a different name.</div>
-              : <div className="rlist">
-                  {filteredPeople.map(p => {
-                    const isMe = me && me.id === p.id;
-                    const amFollowing = following.includes(p.id);
-                    return (
-                      <div key={p.id} className="person">
-                        <div style={{ display: "flex", alignItems: "center", gap: 14 }} onClick={() => router.push("/u/" + encodeURIComponent(p.username))}>
-                          {p.avatar_url
-                            ? <img className="pavatar" src={p.avatar_url} alt="" style={{ width: 48, height: 48 }} />
-                            : <div className="pavatar pavatar-ph" style={{ width: 48, height: 48, fontSize: 20 }}>{(p.username || "?").charAt(0).toUpperCase()}</div>}
-                          <div>
-                            <div className="pname">{p.username}</div>
-                            <div className="psens">{p.sensitivity}</div>
-                            <div className="pmeta">{p.reviewCount} place{p.reviewCount !== 1 ? "s" : ""} rated</div>
-                          </div>
+          filteredPeople.length === 0
+            ? <div className="empty"><div className="big">No one found.</div>Try a different name.</div>
+            : <div className="rlist">
+                {filteredPeople.map(p => {
+                  const isMe = me && me.id === p.id;
+                  const amFollowing = following.includes(p.id);
+                  return (
+                    <div key={p.id} className="person">
+                      <div style={{ display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }} onClick={() => router.push("/u/" + encodeURIComponent(p.username))}>
+                        {p.avatar_url
+                          ? <img className="pavatar" src={p.avatar_url} alt="" style={{ width: 48, height: 48 }} />
+                          : <div className="pavatar pavatar-ph" style={{ width: 48, height: 48, fontSize: 20 }}>{(p.username || "?").charAt(0).toUpperCase()}</div>}
+                        <div>
+                          <div className="pname">{p.username}</div>
+                          <div className="psens">{p.sensitivity}</div>
+                          <div className="pmeta">{p.reviewCount} place{p.reviewCount !== 1 ? "s" : ""} rated</div>
                         </div>
-                        {!isMe && (
-                          <button className={"follow-mini " + (amFollowing ? "on" : "")} onClick={() => doFollow(p.id)}>
-                            {amFollowing ? "Following" : "Follow"}
-                          </button>
-                        )}
                       </div>
-                    );
-                  })}
-                </div>}
-          </>
+                      {!isMe && (
+                        <button className={"follow-mini " + (amFollowing ? "on" : "")} onClick={() => doFollow(p.id)}>
+                          {amFollowing ? "Following" : "Follow"}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
         )}
       </div>
     </div>
