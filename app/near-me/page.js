@@ -5,7 +5,7 @@ import Header from "../../components/Header";
 import { getRestaurants } from "../../lib/db";
 
 export default function NearMePage() {
-  const [status, setStatus] = useState("locating"); // locating | ready | denied | error
+  const [status, setStatus] = useState("locating");
   const [best, setBest] = useState([]);
   const router = useRouter();
 
@@ -68,7 +68,6 @@ export default function NearMePage() {
                         {(r.neighborhood || r.cuisine) && " · "}
                         <span className="near-dist">{r._dist.toFixed(1)} mi away</span>
                       </div>
-                      {r.scores.reacted_bad > 0 && <div className="react-line"><span className="bad">{r.scores.reacted_bad} got sick</span></div>}
                     </div>
                     <div className="near-scores">
                       <div className="score-box">
