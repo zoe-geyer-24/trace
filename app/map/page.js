@@ -38,10 +38,18 @@ export default function MapPage() {
       const val = v == null ? null : Number(v);
       const n = r.scores?.review_count || 0;
       const bad = r.scores?.reacted_bad || 0;
-      const m = L.circleMarker([r.lat, r.lng], { radius: 11, fillColor: color(val), color: "#fff", weight: 2, fillOpacity: .92 });
+      const label = val == null ? "–" : (Math.round(val * 10) / 10).toString();
+      const bg = color(val);
+      const icon = L.divIcon({
+        className: "score-pin",
+        html: `<div style="background:${bg};color:#fff;width:34px;height:34px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;font-weight:800;">${label}</div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17]
+      });
+      const m = L.marker([r.lat, r.lng], { icon });
       m.bindPopup(`<div style="font-family:'Helvetica Neue',Arial,sans-serif">
         <b style="font-family:Georgia,serif;font-size:15px">${r.name}</b><br>${r.neighborhood || ""}<br>
-        <span style="font-weight:800;color:${color(val)}">${val == null ? "—" : Math.round(val*10)/10}${val != null ? " / 10" : ""}</span> ${mode === "gf" ? "GF Safety" : "Overall"}
+        <span style="font-weight:800;color:${bg}">${val == null ? "—" : Math.round(val*10)/10}${val != null ? " / 10" : ""}</span> ${mode === "gf" ? "GF Safety" : "Overall"}
         <span style="color:#8a7d6b"> · ${n} review${n !== 1 ? "s" : ""}</span>
         ${bad ? `<br><span style="color:#b83227;font-weight:700">${bad} reported getting sick</span>` : ""}
         <br><a href="/restaurant/${r.id}" style="color:#9c4f1a;font-weight:700">See reviews →</a></div>`);
