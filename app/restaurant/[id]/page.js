@@ -6,7 +6,7 @@ import { fmtAvg } from "../../../components/ui";
 import {
   getRestaurant, getReviewsForRestaurant, getMyProfile,
   upsertReview, deleteReview, getMyLists, toggleList, getFollowing, follow, unfollow,
-  uploadReviewPhoto
+  uploadReviewPhoto, getMyRankedList, saveRanking
 } from "../../../lib/db";
 
 export default function RestaurantPage() {
@@ -34,7 +34,6 @@ export default function RestaurantPage() {
   const n = s.review_count || 0;
   const ok = s.reacted_ok || 0, bad = s.reacted_bad || 0;
   const onWant = lists.want.includes(rest.id);
-  const onBeen = lists.been.includes(rest.id);
   const myReview = me && reviews.find(r => r.user_id === me.id);
 
   const confidence = n === 0 ? "" : n < 3
@@ -75,7 +74,6 @@ export default function RestaurantPage() {
           <div className="detail-actions">
             <button className="btn btn-sage" onClick={() => me ? setShowReview(true) : router.push("/login")}>{myReview ? "Edit my review" : "+ Rate this place"}</button>
             <button className="btn btn-ghost" onClick={() => doToggleList("want", onWant)}>{onWant ? "✓ On want-to-go" : "Want to go"}</button>
-            <button className="btn btn-ghost" onClick={() => doToggleList("been", onBeen)}>{onBeen ? "✓ Been there" : "Mark been there"}</button>
           </div>
         </div>
 
@@ -134,7 +132,7 @@ function ReviewCard({ r, me, following, onFollow, onDelete }) {
 }
 
 function ReviewModal({ rest, me, existing, onClose, onSaved }) {
-  const [overall, setOverall] = useState(existing?.overall ?? 8);
+  const [step, setStep] = useState("form");
   const [gf, setGf] = useState(existing?.gf_safety ?? 8);
   const [reaction, setReaction] = useState(existing?.reaction ?? "");
   const [ordered, setOrdered] = useState(existing?.ordered ?? "");
@@ -150,6 +148,13 @@ function ReviewModal({ rest, me, existing, onClose, onSaved }) {
     staff_unsure: existing?.staff_unsure ?? false,
   });
   const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const [sentiment, setSentiment] = useState(existing?.sentiment ?? "");
+  const [rankedList, setRankedList] = useState([]);
+  const [cmpLo, setCmpLo] = useState(0);
+  const [cmpHi, setCmpHi] = useState(0);
+  const [group, setGroup] = useState([]);
 
   async function handleFile(e) {
     const file = e.target.files?.[0];
@@ -161,31 +166,131 @@ function ReviewModal({ rest, me, existing, onClose, onSaved }) {
     setPhotoUrl(res.url);
   }
 
-  async function save() {
+  const toggle = k => setFlags({ ...flags, [k]: !flags[k] });
+  const setReact = v => setReaction(reaction === v ? "" : v);
+
+  // Move from the form to the sentiment step (after validating GF).
+  function goToSentiment() {
+    setErr("");
+    setStep("sentiment");
+  }
+
+  // Pick a sentiment, then set up comparisons within that group.
+  async function pickSentiment(sv) {
+    setSentiment(sv);
+    const list = await getMyRankedList(me.id);
+    // exclude this restaurant if re-reviewing
+    const others = list.filter(x => x.restaurant_id !== rest.id);
+    const sameGroup = others.filter(x => x.sentiment === sv);
+    setRankedList(others);
+    setGroup(sameGroup);
+    if (sameGroup.length === 0) {
+      // nothing to compare against — finalize immediately
+      finalize(sv, others, sameGroup, 0);
+    } else {
+      setCmpLo(0); setCmpHi(sameGroup.length);
+      setStep("compare");
+    }
+  }
+
+  // Binary-search comparison. better = new place is better than the shown one.
+  function answer(better) {
+    const mid = Math.floor((cmpLo + cmpHi) / 2);
+    let lo = cmpLo, hi = cmpHi;
+    if (better) hi = mid; else lo = mid + 1;
+    if (lo >= hi) {
+      finalize(sentiment, rankedList, group, lo);
+    } else {
+      setCmpLo(lo); setCmpHi(hi);
+    }
+  }
+
+  // Build the final ordering and save everything.
+  async function finalize(sv, others, sameGroup, insertAt) {
+    setSaving(true); setErr("");
+    // Save the review row first (without overall — engine sets it).
     const rec = {
       restaurant_id: rest.id, user_id: me.id,
-      overall: parseInt(overall), gf_safety: parseInt(gf),
-      reaction: reaction || null, ordered: ordered.trim(), photo_url: photoUrl || null, body: body.trim(),
-      ...flags
+      overall: existing?.overall ?? 5, gf_safety: parseInt(gf),
+      reaction: reaction || null, ordered: ordered.trim(),
+      photo_url: photoUrl || null, body: body.trim(),
+      sentiment: sv, ...flags
     };
     const { error } = await upsertReview(rec);
-    if (error) { setErr(error); return; }
+    if (error) { setSaving(false); setErr(error); return; }
+
+    // Build global ordered list: liked group, then fine, then disliked.
+    // Within the chosen sentiment group, insert this place at insertAt.
+    const groupsOrder = ["liked", "fine", "disliked"];
+    const byGroup = { liked: [], fine: [], disliked: [] };
+    others.forEach(o => { (byGroup[o.sentiment] || byGroup.fine).push(o.restaurant_id); });
+    const insertGroup = byGroup[sv] || byGroup.fine;
+    insertGroup.splice(insertAt, 0, rest.id);
+
+    const ordered2 = [];
+    groupsOrder.forEach(g => byGroup[g].forEach(rid => ordered2.push({ restaurant_id: rid, sentiment: g })));
+
+    await saveRanking(me.id, ordered2);
+    setSaving(false);
     onSaved();
   }
-  const setReact = v => setReaction(reaction === v ? "" : v);
-  const toggle = k => setFlags({ ...flags, [k]: !flags[k] });
 
+  // ----- RENDER -----
+  if (step === "sentiment") {
+    return (
+      <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+        <div className="modal">
+          <h2>How was {rest.name}?</h2>
+          <div className="hint">This sets where it lands in your overall ranking.</div>
+          <div className="sentiment-pick">
+            <button className="sent-btn liked" onClick={() => pickSentiment("liked")}>👍 Liked it</button>
+            <button className="sent-btn fine" onClick={() => pickSentiment("fine")}>😐 It was fine</button>
+            <button className="sent-btn disliked" onClick={() => pickSentiment("disliked")}>👎 Disliked it</button>
+          </div>
+          {err && <div className="err">{err}</div>}
+          <div className="modal-actions"><button className="btn btn-ghost" onClick={() => setStep("form")}>← Back</button></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "compare") {
+    const mid = Math.floor((cmpLo + cmpHi) / 2);
+    const opponent = group[mid];
+    return (
+      <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+        <div className="modal">
+          <h2>Which was better?</h2>
+          <div className="hint">Comparing within places you {sentiment === "liked" ? "liked" : sentiment === "fine" ? "thought were fine" : "disliked"}.</div>
+          <div className="cmp-row">
+            <button className="cmp-card" onClick={() => answer(true)}>
+              <div className="cmp-name">{rest.name}</div>
+              <div className="cmp-tag">this one</div>
+            </button>
+            <div className="cmp-vs">vs</div>
+            <button className="cmp-card" onClick={() => answer(false)}>
+              <div className="cmp-name">{opponent.name}</div>
+              <div className="cmp-tag">already ranked</div>
+            </button>
+          </div>
+          {saving && <div className="sub" style={{ textAlign: "center" }}>Saving…</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // step === "form"
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <h2>{existing ? "Edit your review" : "Rate this place"}</h2>
         <div className="hint">Be specific about cross-contamination — that's what other celiacs are here for.</div>
-        <div className="row">
-          <div className="field"><label>Overall (0–10)</label>
-            <select value={overall} onChange={e => setOverall(e.target.value)}>{[...Array(11)].map((_, i) => <option key={i} value={10 - i}>{10 - i}</option>)}</select></div>
-          <div className="field"><label>GF safety (0–10)</label>
-            <select value={gf} onChange={e => setGf(e.target.value)}>{[...Array(11)].map((_, i) => <option key={i} value={10 - i}>{10 - i}</option>)}</select></div>
+
+        <div className="field">
+          <label>GF safety (0–10)</label>
+          <select value={gf} onChange={e => setGf(e.target.value)}>{[...Array(11)].map((_, i) => <option key={i} value={10 - i}>{10 - i}</option>)}</select>
         </div>
+
         <div className="field">
           <label>Did you get sick?</label>
           <div className="reaction-pick">
@@ -194,7 +299,9 @@ function ReviewModal({ rest, me, existing, onClose, onSaved }) {
           </div>
           <div className="sub">Optional, but the most useful thing you can tell another celiac.</div>
         </div>
+
         <div className="field"><label>What I ordered</label><input value={ordered} onChange={e => setOrdered(e.target.value)} placeholder="e.g. Cacio e pepe + the fritto misto" /></div>
+
         <div className="field">
           <label>Photo (optional)</label>
           <input type="file" accept="image/*" onChange={handleFile} />
@@ -206,6 +313,7 @@ function ReviewModal({ rest, me, existing, onClose, onSaved }) {
             </div>
           )}
         </div>
+
         <div className="field">
           <label>Safety facts (optional)</label>
           <div className="checks">
@@ -217,11 +325,13 @@ function ReviewModal({ rest, me, existing, onClose, onSaved }) {
             <label className="check"><input type="checkbox" checked={flags.staff_unsure} onChange={() => toggle("staff_unsure")} /> Staff were unsure about celiac — didn't feel safe eating there</label>
           </div>
         </div>
+
         <div className="field"><label>Your review</label><textarea value={body} onChange={e => setBody(e.target.value)} placeholder="How careful were they? Did you react? Would you go back?" /></div>
+
         {err && <div className="err">{err}</div>}
         <div className="modal-actions">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-sage" onClick={save} disabled={uploading}>Post review</button>
+          <button className="btn btn-sage" onClick={goToSentiment} disabled={uploading}>Next: rank it →</button>
         </div>
       </div>
     </div>
