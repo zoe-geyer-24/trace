@@ -77,33 +77,30 @@ export default function AccountPage() {
       <Header />
       <div className="view">
 
-        <div className="profile-card">
-          <div className="profile-top">
-            <div className="avatar-wrap">
-              {me.avatar_url
-                ? <img className="avatar" src={me.avatar_url} alt="" />
-                : <div className="avatar avatar-placeholder">{me.username.charAt(0).toUpperCase()}</div>}
-            </div>
-            <div className="profile-id">
-              <h2 className="acct-name">{me.username}</h2>
-              <div className="acct-sens">{me.sensitivity}</div>
-              {me.bio && <div className="profile-bio">{me.bio}</div>}
+        <div className="pcard">
+          <div className="pcard-top">
+            {me.avatar_url
+              ? <img className="pavatar" src={me.avatar_url} alt="" />
+              : <div className="pavatar pavatar-ph">{me.username.charAt(0).toUpperCase()}</div>}
+            <div className="pcard-id">
+              <h2 className="pname">{me.username}</h2>
+              <span className="psens-pill">{me.sensitivity}</span>
+              {me.bio && <div className="pbio">{me.bio}</div>}
             </div>
           </div>
-
-          <div className="profile-actions">
-            <button className="btn btn-ghost" onClick={() => setShowEdit(true)}>Edit profile</button>
-            <button className="btn btn-ghost" onClick={shareProfile}>Share profile</button>
+          <div className="pcard-actions">
+            <button className="pbtn" onClick={() => setShowEdit(true)}>✎ Edit profile</button>
+            <button className="pbtn" onClick={shareProfile}>↗ Share profile</button>
             {shareMsg && <span className="share-msg">{shareMsg}</span>}
           </div>
+        </div>
 
-          <div className="acct-stats">
-            <div className="stat"><div className="num">{reviewCount}</div><div className="lbl">Places rated</div></div>
-            <div className="stat"><div className="num">{lists.been.length}</div><div className="lbl">Been there</div></div>
-            <div className="stat"><div className="num">{lists.want.length}</div><div className="lbl">Want to go</div></div>
-            <div className="stat"><div className="num">{followingN}</div><div className="lbl">Following</div></div>
-            <div className="stat"><div className="num">{followerN}</div><div className="lbl">Followers</div></div>
-          </div>
+        <div className="stat-grid">
+          <div className="stat-tile"><div className="stat-num">{reviewCount}</div><div className="stat-lbl">Rated</div></div>
+          <div className="stat-tile"><div className="stat-num">{lists.been.length}</div><div className="stat-lbl">Been</div></div>
+          <div className="stat-tile"><div className="stat-num">{lists.want.length}</div><div className="stat-lbl">Want</div></div>
+          <div className="stat-tile"><div className="stat-num">{followingN}</div><div className="stat-lbl">Following</div></div>
+          <div className="stat-tile"><div className="stat-num">{followerN}</div><div className="stat-lbl">Followers</div></div>
         </div>
 
         <div className="section-title">My lists</div>
@@ -177,8 +174,8 @@ function EditProfileModal({ me, onClose, onSaved }) {
           <label>Profile photo</label>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             {avatarUrl
-              ? <img className="avatar" src={avatarUrl} alt="" style={{ width: 64, height: 64 }} />
-              : <div className="avatar avatar-placeholder" style={{ width: 64, height: 64, fontSize: 26 }}>{(username || "?").charAt(0).toUpperCase()}</div>}
+              ? <img className="pavatar" src={avatarUrl} alt="" style={{ width: 64, height: 64 }} />
+              : <div className="pavatar pavatar-ph" style={{ width: 64, height: 64, fontSize: 26 }}>{(username || "?").charAt(0).toUpperCase()}</div>}
             <div style={{ flex: 1 }}>
               <input type="file" accept="image/*" onChange={handleFile} />
               {uploading && <div className="sub">Uploading…</div>}
