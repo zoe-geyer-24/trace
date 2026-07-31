@@ -222,6 +222,12 @@ a { color:inherit; text-decoration:none; }
   .stat-grid{grid-template-columns:repeat(3,1fr)}
   .pcard{padding:24px}
 }
-
+/* Been-there GF safety groups */
+.safety-group-head { display:flex; align-items:center; gap:10px; font-family:"Helvetica Neue",Arial,sans-serif; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; padding:8px 14px; border-radius:8px; }
+.safety-group-head.safe { background:rgba(74,107,84,.13); color:var(--sage); }
+.safety-group-head.okay { background:rgba(212,160,23,.15); color:#8a6d0f; }
+.safety-group-head.unsafe { background:rgba(184,50,39,.11); color:var(--alarm); }
+.safety-group-count { font-size:11px; font-weight:700; background:currentColor; color:var(--paper); border-radius:100px; padding:1px 9px; margin-left:auto; }
+.safety-group-head.safe .safety-group-count { color:#fff; }
 
 
