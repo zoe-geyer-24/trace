@@ -1,24 +1,37 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
-import { ScorePair } from "../components/ui";
-import { getRestaurants, findOrCreateFromFoursquare } from "../lib/db";
+import { fmtAvg } from "../components/ui";
+import {
+  getRestaurants, findOrCreateFromFoursquare, getMyProfile,
+  getPeople, getFollowing, follow, unfollow
+} from "../lib/db";
 
 export default function BrowsePage() {
-  const [rests, setRests] = useState(null);
+  const [mode, setMode] = useState("restaurants");
+  const [rests, setRests] = useState([]);
   const [search, setSearch] = useState("");
-  const [showSuggest, setShowSuggest] = useState(false);
   const [fsqResults, setFsqResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  const [opening, setOpening] = useState(false);
-  const [hood, setHood] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
   const [cuisine, setCuisine] = useState("");
   const [sort, setSort] = useState("gf");
+  const [me, setMe] = useState(null);
+  const [people, setPeople] = useState([]);
+  const [peopleQuery, setPeopleQuery] = useState("");
+  const [following, setFollowing] = useState([]);
   const debounceRef = useRef(null);
   const router = useRouter();
 
-  useEffect(() => { getRestaurants().then(setRests); }, []);
+  useEffect(() => {
+    getRestaurants().then(setRests);
+    getMyProfile().then(async p => {
+      setMe(p);
+      if (p) setFollowing(await getFollowing(p.id));
+    });
+    getPeople().then(setPeople);
+  }, []);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -32,96 +45,132 @@ export default function BrowsePage() {
       } catch { setFsqResults([]); }
       setSearching(false);
     }, 300);
-    return () => debounceRef.current && clearTimeout(debounceRef.current);
   }, [search]);
 
-  async function pickPlace(place) {
-    setOpening(true);
-    const r = await findOrCreateFromFoursquare(place);
-    if (r && r.id) { router.push("/restaurant/" + r.id); }
-    else { setOpening(false); alert("Sorry — couldn't open that place. " + (r?.error || "")); }
+  async function pickPlace(p) {
+    const rec = await findOrCreateFromFoursquare(p);
+    if (rec && rec.id) router.push("/restaurant/" + rec.id);
+    else if (rec && rec.error) alert("Sorry — couldn't open that place. " + rec.error);
   }
 
-  if (rests === null) return <div className="wrap"><Header /><div className="loading">Tracing the safe spots…</div></div>;
+  const rated = rests.filter(r => r.scores && r.scores.review_count > 0);
+  const neighborhoods = [...new Set(rated.map(r => r.neighborhood).filter(Boolean))].sort();
+  const cuisines = [...new Set(rated.map(r => r.cuisine).filter(Boolean))].sort();
 
-  const hoods = [...new Set(rests.map(r => r.neighborhood).filter(Boolean))].sort();
-  const cuisines = [...new Set(rests.map(r => r.cuisine).filter(Boolean))].sort();
+  let filtered = rated.filter(r =>
+    (!neighborhood || r.neighborhood === neighborhood) &&
+    (!cuisine || r.cuisine === cuisine)
+  );
+  filtered.sort((a, b) => {
+    if (sort === "gf") return (b.scores.avg_gf ?? -1) - (a.scores.avg_gf ?? -1);
+    if (sort === "overall") return (b.scores.avg_overall ?? -1) - (a.scores.avg_overall ?? -1);
+    if (sort === "reviews") return (b.scores.review_count ?? 0) - (a.scores.review_count ?? 0);
+    return a.name.localeCompare(b.name);
+  });
 
-  let list = rests.filter(r => {
-    if (hood && r.neighborhood !== hood) return false;
-    if (cuisine && r.cuisine !== cuisine) return false;
-    return true;
-  });
-  list.sort((a, b) => {
-    if (sort === "name") return a.name.localeCompare(b.name);
-    if (sort === "reviews") return (b.scores?.review_count||0) - (a.scores?.review_count||0);
-    const f = sort === "overall" ? "avg_overall" : "avg_gf";
-    return (b.scores?.[f] ?? -1) - (a.scores?.[f] ?? -1);
-  });
+  const filteredPeople = people.filter(p =>
+    !peopleQuery.trim() || (p.username || "").toLowerCase().includes(peopleQuery.trim().toLowerCase())
+  );
+
+  async function doFollow(uid) {
+    if (!me) return router.push("/login");
+    if (following.includes(uid)) await unfollow(me.id, uid); else await follow(me.id, uid);
+    setFollowing(await getFollowing(me.id));
+  }
 
   return (
     <div className="wrap">
       <Header />
       <div className="view">
-        <div className="search-row" style={{ position: "relative" }}>
-          <input className="search" placeholder="Search any NYC restaurant to review…"
-            value={search}
-            onChange={e => { setSearch(e.target.value); setShowSuggest(true); }}
-            onFocus={() => setShowSuggest(true)}
-            onBlur={() => setTimeout(() => setShowSuggest(false), 200)} />
-          {showSuggest && search.trim().length >= 2 && (
-            <div className="suggest-box">
-              {searching && <div className="suggest-item" style={{ color: "#8a7d6b" }}>Searching…</div>}
-              {!searching && fsqResults.length === 0 && <div className="suggest-item" style={{ color: "#8a7d6b" }}>No matches found.</div>}
-              {fsqResults.map(p => (
-                <div key={p.fsq_id} className="suggest-item" onMouseDown={() => pickPlace(p)}>
-                  <div className="suggest-name">{p.name}</div>
-                  <div className="suggest-meta">{p.address || p.neighborhood}</div>
+
+        <div className="map-toggle" style={{ marginBottom: 22 }}>
+          <button className={"gf " + (mode === "restaurants" ? "on" : "")} onClick={() => setMode("restaurants")}>Restaurants</button>
+          <button className={"overall " + (mode === "people" ? "on" : "")} onClick={() => setMode("people")}>People</button>
+        </div>
+
+        {mode === "restaurants" ? (
+          <>
+            <div style={{ position: "relative", marginBottom: 16 }}>
+              <input className="search" style={{ width: "100%" }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search any NYC restaurant to review…" />
+              {search.trim().length >= 2 && (
+                <div className="suggest-box">
+                  {searching && <div className="suggest-item" style={{ color: "#8a7d6b" }}>Searching…</div>}
+                  {!searching && fsqResults.length === 0 && <div className="suggest-item" style={{ color: "#8a7d6b" }}>No matches found.</div>}
+                  {fsqResults.map(p => (
+                    <div key={p.fsq_id} className="suggest-item" onMouseDown={() => pickPlace(p)}>
+                      <div className="suggest-name">{p.name}</div>
+                      <div className="suggest-meta">{p.address || p.neighborhood}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
 
-        {opening && <div className="loading">Opening…</div>}
+            <div className="filterbar">
+              <select value={neighborhood} onChange={e => setNeighborhood(e.target.value)}>
+                <option value="">All neighborhoods</option>
+                {neighborhoods.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+              <select value={cuisine} onChange={e => setCuisine(e.target.value)}>
+                <option value="">All cuisines</option>
+                {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select value={sort} onChange={e => setSort(e.target.value)}>
+                <option value="gf">Sort: GF safety</option>
+                <option value="overall">Sort: Overall</option>
+                <option value="reviews">Sort: Most reviewed</option>
+                <option value="az">Sort: A–Z</option>
+              </select>
+              <span className="fcount">{filtered.length} reviewed place{filtered.length !== 1 ? "s" : ""}</span>
+            </div>
 
-        <div className="filterbar">
-          <select value={hood} onChange={e => setHood(e.target.value)}>
-            <option value="">All neighborhoods</option>
-            {hoods.map(h => <option key={h} value={h}>{h}</option>)}
-          </select>
-          <select value={cuisine} onChange={e => setCuisine(e.target.value)}>
-            <option value="">All cuisines</option>
-            {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select value={sort} onChange={e => setSort(e.target.value)}>
-            <option value="gf">Sort: GF safety</option>
-            <option value="overall">Sort: Overall</option>
-            <option value="reviews">Sort: Most reviewed</option>
-            <option value="name">Sort: A–Z</option>
-          </select>
-          <span className="fcount">{list.length} reviewed place{list.length !== 1 ? "s" : ""}</span>
-        </div>
-
-        <div className="list-head" style={{ marginTop: 0 }}>Reviewed by the community</div>
-        <div className="rlist">
-          {list.length === 0
-            ? <div className="empty"><div className="big">No reviews yet.</div>Search a restaurant above to be the first.</div>
-            : list.map(r => (
-              <div key={r.id} className="rcard" onClick={() => router.push("/restaurant/" + r.id)}>
-                <div>
-                  <h3 className="rcard-name">{r.name}</h3>
-                  <div className="rcard-meta">
-                    {[r.neighborhood, r.cuisine].filter(Boolean).map((m, i) => (
-                      <span key={i}>{i > 0 && <span className="dot">●</span>}{m}</span>
-                    ))}
-                  </div>
-                  {r.scores?.reacted_bad > 0 && <div className="react-line"><span className="bad">{r.scores.reacted_bad} got sick</span></div>}
-                </div>
-                <ScorePair scores={r.scores} />
-              </div>
-            ))}
-        </div>
+            {filtered.length === 0
+              ? <div className="empty"><div className="big">No reviewed places yet.</div>Search any NYC restaurant above to be the first to rate it.</div>
+              : <div className="rlist">
+                  {filtered.map(r => (
+                    <div key={r.id} className="rcard" onClick={() => router.push("/restaurant/" + r.id)}>
+                      <div><h3 className="rcard-name">{r.name}</h3>
+                        <div className="rcard-meta">{[r.neighborhood, r.cuisine].filter(Boolean).join(" · ")}</div></div>
+                      <div className="rcard-scores">
+                        <div className="score-box"><div className="score-label">Overall</div><div className={"score-num overall-num " + (r.scores?.avg_overall == null ? "none" : "")}>{fmtAvg(r.scores?.avg_overall)}</div></div>
+                        <div className="score-box"><div className="score-label">GF Safety</div><div className={"score-num gf-num " + (r.scores?.avg_gf == null ? "none" : "")}>{fmtAvg(r.scores?.avg_gf)}</div></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>}
+          </>
+        ) : (
+          <>
+            <input className="search" style={{ width: "100%", marginBottom: 18 }} value={peopleQuery} onChange={e => setPeopleQuery(e.target.value)} placeholder="Search people by username…" />
+            {filteredPeople.length === 0
+              ? <div className="empty"><div className="big">No one found.</div>Try a different name.</div>
+              : <div className="rlist">
+                  {filteredPeople.map(p => {
+                    const isMe = me && me.id === p.id;
+                    const amFollowing = following.includes(p.id);
+                    return (
+                      <div key={p.id} className="person">
+                        <div style={{ display: "flex", alignItems: "center", gap: 14 }} onClick={() => router.push("/u/" + encodeURIComponent(p.username))}>
+                          {p.avatar_url
+                            ? <img className="pavatar" src={p.avatar_url} alt="" style={{ width: 48, height: 48 }} />
+                            : <div className="pavatar pavatar-ph" style={{ width: 48, height: 48, fontSize: 20 }}>{(p.username || "?").charAt(0).toUpperCase()}</div>}
+                          <div>
+                            <div className="pname">{p.username}</div>
+                            <div className="psens">{p.sensitivity}</div>
+                            <div className="pmeta">{p.reviewCount} place{p.reviewCount !== 1 ? "s" : ""} rated</div>
+                          </div>
+                        </div>
+                        {!isMe && (
+                          <button className={"follow-mini " + (amFollowing ? "on" : "")} onClick={() => doFollow(p.id)}>
+                            {amFollowing ? "Following" : "Follow"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>}
+          </>
+        )}
       </div>
     </div>
   );
