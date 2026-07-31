@@ -7,7 +7,7 @@ import { getProfileByUsername, getPublicProfileData, getMyProfile, getFollowing,
 export default function PublicProfilePage() {
   const { username } = useParams();
   const router = useRouter();
-  const [profile, setProfile] = useState(undefined); // undefined = loading, null = not found
+  const [profile, setProfile] = useState(undefined);
   const [data, setData] = useState({ want: [], been: [], reviewCount: 0, followerCount: 0 });
   const [me, setMe] = useState(null);
   const [following, setFollowing] = useState([]);
