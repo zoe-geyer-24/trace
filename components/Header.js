@@ -31,6 +31,7 @@ export default function Header() {
         {tab("/map", "Map")}
         {tab("/following", "Following")}
         {tab("/account", "My account")}
+        {tab("/recommendations", "For You")}
         <span className="who">
           {loaded && (me
             ? <>Signed in as <b>{me.username}</b> · <button className="btn-link" onClick={handleSignOut}>Sign out</button></>
