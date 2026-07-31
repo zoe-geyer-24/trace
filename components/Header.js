@@ -27,11 +27,10 @@ export default function Header() {
       </header>
       <nav className="nav">
         {tab("/", "Browse")}
-        {tab("/rankings", "Rankings")}
         {tab("/map", "Map")}
+        {tab("/recommendations", "For You")}
         {tab("/following", "Following")}
         {tab("/account", "My account")}
-        {tab("/recommendations", "For You")}
         <span className="who">
           {loaded && (me
             ? <>Signed in as <b>{me.username}</b> · <button className="btn-link" onClick={handleSignOut}>Sign out</button></>
