@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import Header from "../../components/Header";
 import { fmtAvg } from "../../components/ui";
 import {
-  getMyProfile, getMyReviews, getMyLists, getFollowing, getFollowerCount,
-  getRestaurants, uploadAvatar, updateProfile
+  getMyProfile, getMyLists, getFollowing, getFollowerCount,
+  getRestaurants, uploadAvatar, updateProfile, getMyReviewedPlaces
 } from "../../lib/db";
 
 const SENSITIVITIES = [
@@ -16,20 +16,22 @@ const SENSITIVITIES = [
 export default function AccountPage() {
   const [me, setMe] = useState(null);
   const [loaded, setLoaded] = useState(false);
-  const [reviewCount, setReviewCount] = useState(0);
-  const [lists, setLists] = useState({ want: [], been: [] });
+  const [reviewed, setReviewed] = useState([]);
+  const [wantIds, setWantIds] = useState([]);
   const [followingN, setFollowingN] = useState(0);
   const [followerN, setFollowerN] = useState(0);
   const [rests, setRests] = useState([]);
   const [showEdit, setShowEdit] = useState(false);
   const [shareMsg, setShareMsg] = useState("");
+  const [beenTab, setBeenTab] = useState("overall");
   const router = useRouter();
 
   async function load() {
     const p = await getMyProfile(); setMe(p); setLoaded(true);
     if (!p) return;
-    setReviewCount((await getMyReviews(p.id)).length);
-    setLists(await getMyLists(p.id));
+    setReviewed(await getMyReviewedPlaces(p.id));
+    const lists = await getMyLists(p.id);
+    setWantIds(lists.want);
     setFollowingN((await getFollowing(p.id)).length);
     setFollowerN(await getFollowerCount(p.id));
     setRests(await getRestaurants());
@@ -57,20 +59,48 @@ export default function AccountPage() {
   if (!me) return <div className="wrap"><Header /><div className="loading">Loading…</div></div>;
 
   const byId = id => rests.find(r => r.id === id);
+  const wantPlaces = wantIds.map(byId).filter(Boolean);
 
-  const ListCard = ({ id }) => {
-    const r = byId(id); if (!r) return null;
-    return (
-      <div className="rcard" onClick={() => router.push("/restaurant/" + r.id)}>
-        <div><h3 className="rcard-name" style={{ fontSize: 19 }}>{r.name}</h3>
-          <div className="rcard-meta">{[r.neighborhood, r.cuisine].filter(Boolean).join(" · ")}</div></div>
-        <div className="rcard-scores">
-          <div className="score-box"><div className="score-label">Overall</div><div className={"score-num overall-num " + (r.scores?.avg_overall == null ? "none" : "")} style={{ fontSize: 20 }}>{fmtAvg(r.scores?.avg_overall)}</div></div>
-          <div className="score-box"><div className="score-label">GF Safety</div><div className={"score-num gf-num " + (r.scores?.avg_gf == null ? "none" : "")} style={{ fontSize: 20 }}>{fmtAvg(r.scores?.avg_gf)}</div></div>
+  const byOverall = reviewed.slice().sort((a, b) => b.myOverall - a.myOverall);
+  const safe = reviewed.filter(r => r.myGf >= 8).sort((a, b) => b.myGf - a.myGf);
+  const okay = reviewed.filter(r => r.myGf >= 5 && r.myGf < 8).sort((a, b) => b.myGf - a.myGf);
+  const unsafe = reviewed.filter(r => r.myGf < 5).sort((a, b) => b.myGf - a.myGf);
+
+  const PlaceRow = ({ r, rank }) => (
+    <div className="rcard" onClick={() => router.push("/restaurant/" + r.id)}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        {rank != null && <div className="rank-badge">{rank}</div>}
+        <div>
+          <h3 className="rcard-name" style={{ fontSize: 19 }}>{r.name}</h3>
+          <div className="rcard-meta">{[r.neighborhood, r.cuisine].filter(Boolean).join(" · ")}</div>
         </div>
       </div>
-    );
-  };
+      <div className="rcard-scores">
+        <div className="score-box"><div className="score-label">Your Overall</div><div className="score-num overall-num" style={{ fontSize: 20 }}>{r.myOverall}</div></div>
+        <div className="score-box"><div className="score-label">Your GF</div><div className="score-num gf-num" style={{ fontSize: 20 }}>{r.myGf}</div></div>
+      </div>
+    </div>
+  );
+
+  const SafetyGroup = ({ title, cls, items }) => (
+    <div style={{ marginBottom: 26 }}>
+      <div className={"safety-group-head " + cls}>{title}<span className="safety-group-count">{items.length}</span></div>
+      {items.length
+        ? <div className="rlist">{items.map(r => <PlaceRow key={r.id} r={r} />)}</div>
+        : <div className="list-empty">None yet.</div>}
+    </div>
+  );
+
+  const WantCard = ({ r }) => (
+    <div className="rcard" onClick={() => router.push("/restaurant/" + r.id)}>
+      <div><h3 className="rcard-name" style={{ fontSize: 19 }}>{r.name}</h3>
+        <div className="rcard-meta">{[r.neighborhood, r.cuisine].filter(Boolean).join(" · ")}</div></div>
+      <div className="rcard-scores">
+        <div className="score-box"><div className="score-label">Overall</div><div className={"score-num overall-num " + (r.scores?.avg_overall == null ? "none" : "")} style={{ fontSize: 20 }}>{fmtAvg(r.scores?.avg_overall)}</div></div>
+        <div className="score-box"><div className="score-label">GF Safety</div><div className={"score-num gf-num " + (r.scores?.avg_gf == null ? "none" : "")} style={{ fontSize: 20 }}>{fmtAvg(r.scores?.avg_gf)}</div></div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="wrap">
@@ -96,34 +126,33 @@ export default function AccountPage() {
         </div>
 
         <div className="stat-grid">
-          <div className="stat-tile"><div className="stat-num">{reviewCount}</div><div className="stat-lbl">Rated</div></div>
-          <div className="stat-tile"><div className="stat-num">{lists.been.length}</div><div className="stat-lbl">Been</div></div>
-          <div className="stat-tile"><div className="stat-num">{lists.want.length}</div><div className="stat-lbl">Want</div></div>
+          <div className="stat-tile"><div className="stat-num">{reviewed.length}</div><div className="stat-lbl">Rated</div></div>
+          <div className="stat-tile"><div className="stat-num">{safe.length}</div><div className="stat-lbl">Felt safe</div></div>
+          <div className="stat-tile"><div className="stat-num">{wantPlaces.length}</div><div className="stat-lbl">Want</div></div>
           <div className="stat-tile"><div className="stat-num">{followingN}</div><div className="stat-lbl">Following</div></div>
           <div className="stat-tile"><div className="stat-num">{followerN}</div><div className="stat-lbl">Followers</div></div>
         </div>
 
-        <div className="section-title">My lists</div>
-
-        <div className="list-block">
-          <div className="list-block-head">
-            <span className="list-block-name">Want to go</span>
-            <span className="list-block-count">{lists.want.length}</span>
-          </div>
-          {lists.want.length
-            ? <div className="rlist">{lists.want.map(id => <ListCard key={id} id={id} />)}</div>
-            : <div className="list-empty">Nothing saved yet — hit "Want to go" on a restaurant.</div>}
+        <div className="section-title">Been there</div>
+        <div className="map-toggle" style={{ marginBottom: 20 }}>
+          <button className={"overall " + (beenTab === "overall" ? "on" : "")} onClick={() => setBeenTab("overall")}>By overall</button>
+          <button className={"gf " + (beenTab === "gf" ? "on" : "")} onClick={() => setBeenTab("gf")}>GF safety</button>
         </div>
 
-        <div className="list-block">
-          <div className="list-block-head">
-            <span className="list-block-name">Been there</span>
-            <span className="list-block-count">{lists.been.length}</span>
-          </div>
-          {lists.been.length
-            ? <div className="rlist">{lists.been.map(id => <ListCard key={id} id={id} />)}</div>
-            : <div className="list-empty">Mark places you've visited from their page.</div>}
-        </div>
+        {reviewed.length === 0
+          ? <div className="list-empty">Review a place and it lands here.</div>
+          : beenTab === "overall"
+            ? <div className="rlist">{byOverall.map((r, i) => <PlaceRow key={r.id} r={r} rank={i + 1} />)}</div>
+            : <div>
+                <SafetyGroup title="Felt safe eating here" cls="safe" items={safe} />
+                <SafetyGroup title="Felt okay eating here" cls="okay" items={okay} />
+                <SafetyGroup title="Felt unsafe eating here" cls="unsafe" items={unsafe} />
+              </div>}
+
+        <div className="section-title" style={{ marginTop: 44 }}>Want to go</div>
+        {wantPlaces.length
+          ? <div className="rlist">{wantPlaces.map(r => <WantCard key={r.id} r={r} />)}</div>
+          : <div className="list-empty">Nothing saved yet — hit "Want to go" on a restaurant.</div>}
       </div>
 
       {showEdit && <EditProfileModal me={me} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); load(); }} />}
