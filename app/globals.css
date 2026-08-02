@@ -261,3 +261,8 @@ a { color:inherit; text-decoration:none; }
 .search-trigger:hover { border-color:var(--rye); }
 .search-trigger-icon { font-size:16px; }
 .search-head { display:flex; align-items:center; gap:14px; margin-bottom:18px; }
+/* Refined sensitivity chips — replaces the earlier .sens-chip rules */
+.sens-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:22px; }
+.sens-chip { font-family:"Helvetica Neue",Arial,sans-serif; font-size:11.5px; font-weight:500; padding:5px 11px; border:1px solid rgba(216,205,180,.6); background:transparent; color:#8a7d6b; border-radius:100px; cursor:pointer; transition:all .13s; }
+.sens-chip:hover { color:var(--rye-deep); border-color:var(--rye); }
+.sens-chip.on { background:rgba(200,115,46,.12); color:var(--rye-deep); border-color:var(--rye); font-weight:700; }
