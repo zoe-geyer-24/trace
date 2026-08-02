@@ -58,6 +58,13 @@ export default function RestaurantPage() {
             {[rest.neighborhood, rest.cuisine].filter(Boolean).map((m, i) => (
               <span key={i}>{i > 0 && <span className="dot">●</span>}{m}</span>))}
           </div>
+          {(rest.cuisine || rest.price) && (
+            <div className="detail-cuisine-price">
+              {rest.cuisine && <span>{rest.cuisine}</span>}
+              {rest.cuisine && rest.price && <span className="dot">●</span>}
+              {rest.price && <span className="price-tag">{"$".repeat(rest.price)}</span>}
+            </div>
+          )}
           <div className="detail-scores">
             <div className="detail-score score-box"><div className="score-label">Overall</div>
               <div className={"score-num overall-num " + (s.avg_overall == null ? "none" : "")}>{fmtAvg(s.avg_overall)}{s.avg_overall != null && <span className="of">/10</span>}</div></div>
@@ -76,6 +83,33 @@ export default function RestaurantPage() {
             <button className="btn btn-ghost" onClick={() => doToggleList("want", onWant)}>{onWant ? "✓ On want-to-go" : "Want to go"}</button>
           </div>
         </div>
+
+        {(() => {
+          const photos = reviews.filter(r => r.photo_url);
+          if (!photos.length) return null;
+          return (
+            <>
+              <div className="reviews-head">Photos from reviews</div>
+              <div className="photo-gallery">
+                {photos.map(r => (
+                  <img key={r.id} className="gallery-photo" src={r.photo_url} alt="" onError={e => e.target.style.display = "none"} />
+                ))}
+              </div>
+            </>
+          );
+        })()}
+
+        {(() => {
+          if (!me || !following.length) return null;
+          const friendReviews = reviews.filter(r => following.includes(r.user_id));
+          if (!friendReviews.length) return null;
+          return (
+            <>
+              <div className="reviews-head">What your friends think</div>
+              {friendReviews.map(r => <ReviewCard key={"f" + r.id} r={r} me={me} following={following} onFollow={doFollow} onDelete={async () => { await deleteReview(rest.id, me.id); load(); }} />)}
+            </>
+          );
+        })()}
 
         <div className="reviews-head">What celiacs are saying</div>
         {reviews.length === 0
