@@ -266,3 +266,9 @@ a { color:inherit; text-decoration:none; }
 .sens-chip { font-family:"Helvetica Neue",Arial,sans-serif; font-size:11.5px; font-weight:500; padding:5px 11px; border:1px solid rgba(216,205,180,.6); background:transparent; color:#8a7d6b; border-radius:100px; cursor:pointer; transition:all .13s; }
 .sens-chip:hover { color:var(--rye-deep); border-color:var(--rye); }
 .sens-chip.on { background:rgba(200,115,46,.12); color:var(--rye-deep); border-color:var(--rye); font-weight:700; }
+/* Restaurant page: cuisine/price, photo gallery */
+.detail-cuisine-price { font-family:"Helvetica Neue",Arial,sans-serif; font-size:13px; color:#6b6052; margin-top:8px; display:flex; align-items:center; gap:2px; }
+.detail-cuisine-price .dot { margin:0 8px; color:var(--rule); }
+.price-tag { color:var(--sage); font-weight:700; letter-spacing:1px; }
+.photo-gallery { display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:10px; margin-bottom:14px; }
+.gallery-photo { width:100%; aspect-ratio:1; object-fit:cover; border-radius:4px; border:1px solid var(--rule); cursor:pointer; }
