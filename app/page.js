@@ -5,7 +5,7 @@ import Header from "../components/Header";
 import { fmtAvg } from "../components/ui";
 import {
   getRestaurants, findOrCreateFromFoursquare, getMyProfile,
-  getPeople, getFollowing, follow, unfollow, getFriendsRecs
+  getPeople, getFollowing, follow, unfollow, getFriendsRecs, getGlutenFriendly
 } from "../lib/db";
 
 const RECENT_KEY = { restaurants: "trace_recent_rest", people: "trace_recent_people" };
@@ -36,6 +36,7 @@ export default function BrowsePage() {
   const [recents, setRecents] = useState([]);
   const [cat, setCat] = useState(null);
   const [friendsRecs, setFriendsRecs] = useState(null);
+  const [gfPlaces, setGfPlaces] = useState(null);
   const [me, setMe] = useState(null);
   const [people, setPeople] = useState([]);
   const [peopleQuery, setPeopleQuery] = useState("");
@@ -70,6 +71,9 @@ export default function BrowsePage() {
     setCat(key);
     if (key === "friends" && friendsRecs === null && me) {
       setFriendsRecs(await getFriendsRecs(me.id));
+    }
+    if (key === "gf" && gfPlaces === null) {
+      setGfPlaces(await getGlutenFriendly());
     }
   }
 
@@ -110,9 +114,21 @@ export default function BrowsePage() {
 
   function renderCategory() {
     if (cat === "gf") {
-      return gfTop.length
-        ? <div className="rlist">{gfTop.map(r => <RestCard key={r.id} r={r} />)}</div>
-        : <div className="list-empty">No rated gluten-free places yet.</div>;
+      if (gfPlaces === null) return <div className="loading">Loading…</div>;
+      return gfPlaces.length
+        ? <div className="rlist">{gfPlaces.map(r => (
+            <div key={r.id} className="rcard" onClick={() => router.push("/restaurant/" + r.id)}>
+              <div style={{ flex: 1 }}>
+                <h3 className="rcard-name">{r.name}</h3>
+                <div className="rcard-meta">{[r.neighborhood, r.cuisine].filter(Boolean).join(" \u00b7 ")}</div>
+                {r.features.length > 0 && <div className="gf-features">{r.features.map((f, i) => <span key={i} className="gf-feat">{f}</span>)}</div>}
+              </div>
+              <div className="rcard-scores">
+                <div className="score-box"><div className="score-label">GF Safety</div><div className="score-num gf-num">{fmtAvg(r.scores?.avg_gf)}</div></div>
+              </div>
+            </div>
+          ))}</div>
+        : <div className="list-empty">No places rated 8+ for GF safety yet. Keep reviewing!</div>;
     }
     if (cat === "friends") {
       if (!me) return <div className="list-empty">Sign in to see what people you follow recommend.</div>;
