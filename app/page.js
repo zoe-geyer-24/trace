@@ -5,14 +5,11 @@ import Header from "../components/Header";
 import { fmtAvg } from "../components/ui";
 import {
   getRestaurants, findOrCreateFromFoursquare, getMyProfile,
-  getPeople, getFollowing, follow, unfollow
+  getPeople, getFollowing, follow, unfollow, getFriendsRecs
 } from "../lib/db";
 
 const RECENT_KEY = { restaurants: "trace_recent_rest", people: "trace_recent_people" };
-
-function loadRecents(mode) {
-  try { return JSON.parse(localStorage.getItem(RECENT_KEY[mode]) || "[]"); } catch { return []; }
-}
+function loadRecents(mode) { try { return JSON.parse(localStorage.getItem(RECENT_KEY[mode]) || "[]"); } catch { return []; } }
 function saveRecent(mode, term) {
   if (!term || !term.trim()) return;
   try {
@@ -22,6 +19,13 @@ function saveRecent(mode, term) {
   } catch {}
 }
 
+const CATS = [
+  { key: "trending", label: "Trending" },
+  { key: "featured", label: "Featured lists" },
+  { key: "friends", label: "Friends' recs" },
+  { key: "gf", label: "Gluten friendly" },
+];
+
 export default function BrowsePage() {
   const [mode, setMode] = useState("restaurants");
   const [rests, setRests] = useState([]);
@@ -30,9 +34,8 @@ export default function BrowsePage() {
   const [searching, setSearching] = useState(false);
   const [focused, setFocused] = useState(false);
   const [recents, setRecents] = useState([]);
-  const [neighborhood, setNeighborhood] = useState("");
-  const [cuisine, setCuisine] = useState("");
-  const [sort, setSort] = useState("gf");
+  const [cat, setCat] = useState(null);
+  const [friendsRecs, setFriendsRecs] = useState(null);
   const [me, setMe] = useState(null);
   const [people, setPeople] = useState([]);
   const [peopleQuery, setPeopleQuery] = useState("");
@@ -62,6 +65,14 @@ export default function BrowsePage() {
     }, 300);
   }, [search]);
 
+  async function pickCat(key) {
+    if (cat === key) { setCat(null); return; }
+    setCat(key);
+    if (key === "friends" && friendsRecs === null && me) {
+      setFriendsRecs(await getFriendsRecs(me.id));
+    }
+  }
+
   async function pickPlace(p) {
     saveRecent("restaurants", search);
     const rec = await findOrCreateFromFoursquare(p);
@@ -70,18 +81,7 @@ export default function BrowsePage() {
   }
 
   const rated = rests.filter(r => r.scores && r.scores.review_count > 0);
-  const neighborhoods = [...new Set(rated.map(r => r.neighborhood).filter(Boolean))].sort();
-  const cuisines = [...new Set(rated.map(r => r.cuisine).filter(Boolean))].sort();
-
-  let filtered = rated.filter(r =>
-    (!neighborhood || r.neighborhood === neighborhood) && (!cuisine || r.cuisine === cuisine)
-  );
-  filtered.sort((a, b) => {
-    if (sort === "gf") return (b.scores.avg_gf ?? -1) - (a.scores.avg_gf ?? -1);
-    if (sort === "overall") return (b.scores.avg_overall ?? -1) - (a.scores.avg_overall ?? -1);
-    if (sort === "reviews") return (b.scores.review_count ?? 0) - (a.scores.review_count ?? 0);
-    return a.name.localeCompare(b.name);
-  });
+  const gfTop = rated.slice().sort((a, b) => (b.scores.avg_gf ?? -1) - (a.scores.avg_gf ?? -1));
 
   const filteredPeople = people.filter(p =>
     !peopleQuery.trim() || (p.username || "").toLowerCase().includes(peopleQuery.trim().toLowerCase())
@@ -93,10 +93,51 @@ export default function BrowsePage() {
     setFollowing(await getFollowing(me.id));
   }
 
-  function switchMode(m) { setMode(m); setSearch(""); setPeopleQuery(""); setFocused(false); setFsqResults([]); }
-
+  function switchMode(m) { setMode(m); setSearch(""); setPeopleQuery(""); setFocused(false); setFsqResults([]); setCat(null); }
   const curTerm = mode === "restaurants" ? search : peopleQuery;
   const showRecents = focused && curTerm.trim().length < 2 && recents.length > 0;
+
+  const RestCard = ({ r }) => (
+    <div className="rcard" onClick={() => router.push("/restaurant/" + r.id)}>
+      <div><h3 className="rcard-name">{r.name}</h3>
+        <div className="rcard-meta">{[r.neighborhood, r.cuisine].filter(Boolean).join(" · ")}</div></div>
+      <div className="rcard-scores">
+        <div className="score-box"><div className="score-label">Overall</div><div className={"score-num overall-num " + (r.scores?.avg_overall == null ? "none" : "")}>{fmtAvg(r.scores?.avg_overall)}</div></div>
+        <div className="score-box"><div className="score-label">GF Safety</div><div className={"score-num gf-num " + (r.scores?.avg_gf == null ? "none" : "")}>{fmtAvg(r.scores?.avg_gf)}</div></div>
+      </div>
+    </div>
+  );
+
+  function renderCategory() {
+    if (cat === "gf") {
+      return gfTop.length
+        ? <div className="rlist">{gfTop.map(r => <RestCard key={r.id} r={r} />)}</div>
+        : <div className="list-empty">No rated gluten-free places yet.</div>;
+    }
+    if (cat === "friends") {
+      if (!me) return <div className="list-empty">Sign in to see what people you follow recommend.</div>;
+      if (friendsRecs === null) return <div className="loading">Loading…</div>;
+      return friendsRecs.length
+        ? <div className="rlist">{friendsRecs.map(r => (
+            <div key={r.id} className="rcard" onClick={() => router.push("/restaurant/" + r.id)}>
+              <div><h3 className="rcard-name">{r.name}</h3>
+                <div className="rcard-meta">{[r.neighborhood, r.cuisine].filter(Boolean).join(" · ")}</div>
+                <div className="react-line" style={{ color: "var(--rye-deep)" }}>Liked by {r.by.slice(0, 3).join(", ")}{r.by.length > 3 ? ` +${r.by.length - 3}` : ""}</div></div>
+              <div className="rcard-scores">
+                <div className="score-box"><div className="score-label">GF Safety</div><div className="score-num gf-num">{r.bestGf}</div></div>
+              </div>
+            </div>
+          ))}</div>
+        : <div className="list-empty">Follow some people who review places, and their top picks show up here.</div>;
+    }
+    // trending / featured => coming soon
+    return (
+      <div className="empty" style={{ padding: "40px 20px" }}>
+        <div className="big">{cat === "trending" ? "Trending is coming soon." : "Featured lists are coming soon."}</div>
+        {cat === "trending" ? "Once more people are reviewing, you'll see what's hot right now." : "Curated guides from the community are on the way."}
+      </div>
+    );
+  }
 
   return (
     <div className="wrap">
@@ -143,38 +184,17 @@ export default function BrowsePage() {
 
         {mode === "restaurants" ? (
           <>
-            <div className="filterbar">
-              <select value={neighborhood} onChange={e => setNeighborhood(e.target.value)}>
-                <option value="">All neighborhoods</option>
-                {neighborhoods.map(n => <option key={n} value={n}>{n}</option>)}
-              </select>
-              <select value={cuisine} onChange={e => setCuisine(e.target.value)}>
-                <option value="">All cuisines</option>
-                {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <select value={sort} onChange={e => setSort(e.target.value)}>
-                <option value="gf">Sort: GF safety</option>
-                <option value="overall">Sort: Overall</option>
-                <option value="reviews">Sort: Most reviewed</option>
-                <option value="az">Sort: A–Z</option>
-              </select>
-              <span className="fcount">{filtered.length} reviewed place{filtered.length !== 1 ? "s" : ""}</span>
+            <div className="cat-row">
+              {CATS.map(c => (
+                <button key={c.key} className={"cat-btn " + (cat === c.key ? "on" : "")} onClick={() => pickCat(c.key)}>{c.label}</button>
+              ))}
             </div>
 
-            {filtered.length === 0
-              ? <div className="empty"><div className="big">No reviewed places yet.</div>Search any NYC restaurant above to be the first to rate it.</div>
-              : <div className="rlist">
-                  {filtered.map(r => (
-                    <div key={r.id} className="rcard" onClick={() => router.push("/restaurant/" + r.id)}>
-                      <div><h3 className="rcard-name">{r.name}</h3>
-                        <div className="rcard-meta">{[r.neighborhood, r.cuisine].filter(Boolean).join(" · ")}</div></div>
-                      <div className="rcard-scores">
-                        <div className="score-box"><div className="score-label">Overall</div><div className={"score-num overall-num " + (r.scores?.avg_overall == null ? "none" : "")}>{fmtAvg(r.scores?.avg_overall)}</div></div>
-                        <div className="score-box"><div className="score-label">GF Safety</div><div className={"score-num gf-num " + (r.scores?.avg_gf == null ? "none" : "")}>{fmtAvg(r.scores?.avg_gf)}</div></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>}
+            {cat ? renderCategory() : (
+              rated.length === 0
+                ? <div className="empty"><div className="big">No reviewed places yet.</div>Search any NYC restaurant above to be the first to rate it.</div>
+                : <div className="rlist">{rated.slice().sort((a, b) => (b.scores.avg_gf ?? -1) - (a.scores.avg_gf ?? -1)).map(r => <RestCard key={r.id} r={r} />)}</div>
+            )}
           </>
         ) : (
           filteredPeople.length === 0
