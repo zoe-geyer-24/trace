@@ -3,6 +3,15 @@ import "./globals.css";
 export const metadata = {
   title: "Trace — Gluten-Free New York",
   description: "NYC restaurants rated by people who can't cheat. Two scores out of ten: how good, and how safe.",
+  appleWebApp: {
+    capable: true,
+    title: "Trace",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport = {
+  themeColor: "#f7f3e9",
 };
  
 export default function RootLayout({ children }) {
