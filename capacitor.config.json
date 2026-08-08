@@ -1,0 +1,9 @@
+{
+  "appId": "com.zoegeyer.trace",
+  "appName": "Trace",
+  "webDir": "ios-shell",
+  "server": {
+    "url": "https://trace-one-bay.vercel.app",
+    "allowNavigation": ["*.supabase.co"]
+  }
+}
