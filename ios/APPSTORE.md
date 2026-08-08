@@ -37,8 +37,8 @@ sudo xcodebuild -runFirstLaunch
 ## Things Apple will check (do these before submitting)
 
 - **Demo account**: because Trace has sign-in, the review form requires a working demo email + password. Make a throwaway account and put it in the review notes.
-- **Account deletion**: Apple requires apps with account creation to offer in-app account deletion. The web app needs a "delete my account" option (a button in Account settings that deletes the Supabase user) before this will pass review.
-- **Privacy policy URL**: required for any app with accounts. A simple page on the site is enough (what's collected: email, reviews, follows; via Supabase; not sold).
+- **Account deletion**: Apple requires apps with account creation to offer in-app account deletion. Built — "Delete account" on the Account page, backed by `/api/delete-account`. It needs one env var in Vercel: `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Settings → API → service_role secret; never commit it). Until it's set, the button shows a friendly "not configured" message.
+- **Privacy policy URL**: required for any app with accounts. Built — live at `/privacy`; use that URL in App Store Connect.
 - **App Privacy questionnaire** in App Store Connect: declare Email Address + User Content (reviews), linked to identity, not used for tracking.
 - **Wrapper-app rule (guideline 4.2)**: Apple sometimes rejects thin website wrappers. Trace is a real interactive app (accounts, reviews, maps, location), which is normally fine. If it's ever rejected on 4.2, the fix is adding a native touch or two (push notifications, native geolocation prompt) — ask Ian.
 
