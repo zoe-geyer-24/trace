@@ -5,7 +5,8 @@ import Header from "../../components/Header";
 import { fmtAvg } from "../../components/ui";
 import {
   getMyProfile, getMyLists, getFollowing, getFollowerCount,
-  getRestaurants, uploadAvatar, updateProfile, getMyReviewedPlaces
+  getRestaurants, uploadAvatar, updateProfile, getMyReviewedPlaces,
+  deleteMyAccount
 } from "../../lib/db";
 
 const SENSITIVITIES = [
@@ -22,6 +23,7 @@ export default function AccountPage() {
   const [followerN, setFollowerN] = useState(0);
   const [rests, setRests] = useState([]);
   const [showEdit, setShowEdit] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
   const [shareMsg, setShareMsg] = useState("");
   const [beenTab, setBeenTab] = useState("overall");
   const router = useRouter();
@@ -153,9 +155,53 @@ export default function AccountPage() {
         {wantPlaces.length
           ? <div className="rlist">{wantPlaces.map(r => <WantCard key={r.id} r={r} />)}</div>
           : <div className="list-empty">Nothing saved yet — hit "Want to go" on a restaurant.</div>}
+
+        <div style={{ marginTop: 60, paddingTop: 20, borderTop: "1px solid rgba(26,23,20,.12)", display: "flex", gap: 18, alignItems: "center" }}>
+          <button className="btn-link" onClick={() => router.push("/privacy")}>Privacy policy</button>
+          <button className="btn-link" style={{ color: "#a33" }} onClick={() => setShowDelete(true)}>Delete account</button>
+        </div>
       </div>
 
       {showEdit && <EditProfileModal me={me} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); load(); }} />}
+      {showDelete && <DeleteAccountModal onClose={() => setShowDelete(false)} onDeleted={() => { router.push("/"); router.refresh(); }} />}
+    </div>
+  );
+}
+
+function DeleteAccountModal({ onClose, onDeleted }) {
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function handleDelete() {
+    setDeleting(true); setErr("");
+    const res = await deleteMyAccount();
+    setDeleting(false);
+    if (res.error) { setErr(res.error); return; }
+    onDeleted();
+  }
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <h2>Delete account</h2>
+        <div className="hint">
+          This permanently deletes your account — your profile, reviews, photos, lists,
+          and follows. It can't be undone.
+        </div>
+        <div className="field">
+          <label>Type DELETE to confirm</label>
+          <input value={confirmText} onChange={e => setConfirmText(e.target.value)} placeholder="DELETE" />
+        </div>
+        {err && <div className="err">{err}</div>}
+        <div className="modal-actions">
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-sage" style={{ background: "#a33" }}
+            onClick={handleDelete} disabled={confirmText !== "DELETE" || deleting}>
+            {deleting ? "Deleting…" : "Delete my account"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
