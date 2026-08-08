@@ -36,7 +36,7 @@ sudo xcodebuild -runFirstLaunch
 
 ## Things Apple will check (do these before submitting)
 
-- **Demo account**: because Trace has sign-in, the review form requires a working demo email + password. Make a throwaway account and put it in the review notes.
+- **Demo account**: because Trace has sign-in, the review form requires a working demo email + password. Done — use `aronalds+applereview@gmail.com` / `TraceDemo2026!` (username AppleReviewer) in the review notes. It's a real account in the production Supabase DB.
 - **Account deletion**: Apple requires apps with account creation to offer in-app account deletion. Built — "Delete account" on the Account page, backed by `/api/delete-account`. It needs one env var in Vercel: `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Settings → API → service_role secret; never commit it). Until it's set, the button shows a friendly "not configured" message.
 - **Privacy policy URL**: required for any app with accounts. Built — live at `/privacy`; use that URL in App Store Connect.
 - **App Privacy questionnaire** in App Store Connect: declare Email Address + User Content (reviews), linked to identity, not used for tracking.
