@@ -11,7 +11,7 @@ export default function PrivacyPage() {
       <Header />
       <div className="view" style={S}>
         <h1 style={{ marginBottom: 4 }}>Privacy Policy</h1>
-        <p style={{ opacity: 0.7, fontStyle: "italic" }}>Last updated: August 8, 2026</p>
+        <p style={{ opacity: 0.7, fontStyle: "italic" }}>Last updated: September 1, 2026</p>
 
         <p>
           Trace is a community for finding and reviewing gluten-free-friendly restaurants.
@@ -49,10 +49,24 @@ export default function PrivacyPage() {
           and follows.
         </p>
 
+        <h3 style={H} id="guidelines">Community guidelines</h3>
+        <p>
+          Trace is built on reviews written by real people, so we hold them to a standard.
+          By creating an account you agree not to post content that is abusive, hateful,
+          harassing, sexually explicit, spam, or that gives false or dangerous information
+          about gluten safety. We have zero tolerance for objectionable content or abusive users.
+        </p>
+        <p>
+          Every review and every profile has a <b>Report</b> link. Reports are reviewed within
+          24 hours; content that breaks these guidelines is removed and the account responsible
+          is warned or deleted. You can also <b>Block</b> any user to hide their reviews and
+          activity from your view; manage blocked users from My account.
+        </p>
+
         <h3 style={H}>Contact</h3>
         <p>
-          Questions? Reach out through the app's support contact listed on the App
-          Store page.
+          Questions, reports, or takedown requests: email{" "}
+          <a href="mailto:aronalds@gmail.com">aronalds@gmail.com</a>. We respond within 24 hours.
         </p>
       </div>
     </div>

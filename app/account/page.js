@@ -6,8 +6,9 @@ import { fmtAvg } from "../../components/ui";
 import {
   getMyProfile, getMyLists, getFollowing, getFollowerCount,
   getRestaurants, uploadAvatar, updateProfile, getMyReviewedPlaces,
-  deleteMyAccount
+  deleteMyAccount, getAllProfiles
 } from "../../lib/db";
+import { getBlockedIds, unblockUser } from "../../lib/moderation";
 
 const SENSITIVITIES = [
   "Celiac disease", "Non-celiac gluten sensitivity", "Wheat allergy",
@@ -24,6 +25,7 @@ export default function AccountPage() {
   const [rests, setRests] = useState([]);
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState([]);
   const [shareMsg, setShareMsg] = useState("");
   const [beenTab, setBeenTab] = useState("overall");
   const router = useRouter();
@@ -37,7 +39,14 @@ export default function AccountPage() {
     setFollowingN((await getFollowing(p.id)).length);
     setFollowerN(await getFollowerCount(p.id));
     setRests(await getRestaurants());
+    const blockedIds = await getBlockedIds();
+    if (blockedIds.length) {
+      const all = await getAllProfiles();
+      setBlockedUsers(blockedIds.map(id => all.find(u => u.id === id) || { id, username: "Deleted user" }));
+    } else setBlockedUsers([]);
   }
+
+  async function unblock(uid) { await unblockUser(uid); load(); }
   useEffect(() => { load(); }, []);
 
   function shareProfile() {
@@ -155,6 +164,15 @@ export default function AccountPage() {
         {wantPlaces.length
           ? <div className="rlist">{wantPlaces.map(r => <WantCard key={r.id} r={r} />)}</div>
           : <div className="list-empty">Nothing saved yet — hit "Want to go" on a restaurant.</div>}
+
+        <div className="section-title" style={{ marginTop: 44 }}>Blocked users</div>
+        {blockedUsers.length
+          ? blockedUsers.map(u => (
+            <div key={u.id} className="person">
+              <div><div className="pname">{u.username}</div>{u.sensitivity && <div className="psens">{u.sensitivity}</div>}</div>
+              <button className="btn btn-ghost" onClick={() => unblock(u.id)}>Unblock</button>
+            </div>))
+          : <div className="list-empty">You haven't blocked anyone. Use "Block" on a review or profile to hide someone's content.</div>}
 
         <div style={{ marginTop: 60, paddingTop: 20, borderTop: "1px solid rgba(26,23,20,.12)", display: "flex", gap: 18, alignItems: "center" }}>
           <button className="btn-link" onClick={() => router.push("/privacy")}>Privacy policy</button>
