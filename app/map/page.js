@@ -18,8 +18,8 @@ export default function MapPage() {
     if (!rests || leafletMap.current || !mapRef.current) return;
     const L = require("leaflet");
     leafletMap.current = L.map(mapRef.current, { scrollWheelZoom: true }).setView([40.745, -73.985], 12.4);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-      { attribution: "&copy; OpenStreetMap &copy; CARTO", subdomains: "abcd", maxZoom: 19 }).addTo(leafletMap.current);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      { attribution: "&copy; OpenStreetMap contributors", maxZoom: 19 }).addTo(leafletMap.current);
     layerRef.current = L.layerGroup().addTo(leafletMap.current);
     drawMarkers();
   }, [rests]);

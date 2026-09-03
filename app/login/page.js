@@ -51,6 +51,9 @@ export default function LoginPage() {
                 {SENSITIVITIES.map(s => <option key={s} value={s}>{s}</option>)}
               </select></div>
           </>}
+          {mode === "up" && <div className="consent">
+            By creating an account you agree to our <a href="/privacy#guidelines">community guidelines</a>: no abusive, hateful, misleading, or unsafe content. Reports are reviewed within 24 hours and violators are removed.
+          </div>}
           {err && <div className="err">{err}</div>}
           <div className="modal-actions">
             <button className="btn btn-ghost" onClick={() => { setMode(mode === "up" ? "in" : "up"); setErr(""); }}>

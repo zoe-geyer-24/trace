@@ -8,6 +8,8 @@ import {
   upsertReview, deleteReview, getMyLists, toggleList, getFollowing, follow, unfollow,
   uploadReviewPhoto, getMyRankedList, saveRanking
 } from "../../../lib/db";
+import { getBlockedIds, filterBlocked } from "../../../lib/moderation";
+import { ModerationLinks } from "../../../components/Moderation";
 
 export default function RestaurantPage() {
   const { id } = useParams();
@@ -22,7 +24,8 @@ export default function RestaurantPage() {
   async function load() {
     const r = await getRestaurant(id);
     setRest(r);
-    setReviews(await getReviewsForRestaurant(id));
+    const blocked = await getBlockedIds();
+    setReviews(filterBlocked(await getReviewsForRestaurant(id), blocked));
     const p = await getMyProfile(); setMe(p);
     if (p) { setLists(await getMyLists(p.id)); setFollowing(await getFollowing(p.id)); }
   }
@@ -106,7 +109,7 @@ export default function RestaurantPage() {
           return (
             <>
               <div className="reviews-head">What your friends think</div>
-              {friendReviews.map(r => <ReviewCard key={"f" + r.id} r={r} me={me} following={following} onFollow={doFollow} onDelete={async () => { await deleteReview(rest.id, me.id); load(); }} />)}
+              {friendReviews.map(r => <ReviewCard key={"f" + r.id} r={r} me={me} following={following} onFollow={doFollow} onBlocked={load} onDelete={async () => { await deleteReview(rest.id, me.id); load(); }} />)}
             </>
           );
         })()}
@@ -114,7 +117,7 @@ export default function RestaurantPage() {
         <div className="reviews-head">What celiacs are saying</div>
         {reviews.length === 0
           ? <div className="empty"><div className="big">No reviews yet.</div>Be the first to rate it.</div>
-          : reviews.map(r => <ReviewCard key={r.id} r={r} me={me} following={following} onFollow={doFollow}
+          : reviews.map(r => <ReviewCard key={r.id} r={r} me={me} following={following} onFollow={doFollow} onBlocked={load}
               onDelete={async () => { await deleteReview(rest.id, me.id); load(); }} />)}
       </div>
 
@@ -125,7 +128,7 @@ export default function RestaurantPage() {
   );
 }
 
-function ReviewCard({ r, me, following, onFollow, onDelete }) {
+function ReviewCard({ r, me, following, onFollow, onDelete, onBlocked }) {
   const tags = [];
   if (r.reaction === "ok") tags.push(["good", "✓ Ate safely, no reaction"]);
   if (r.reaction === "bad") tags.push(["bad", "⚠ Got glutened here"]);
@@ -159,7 +162,9 @@ function ReviewCard({ r, me, following, onFollow, onDelete }) {
       {r.photo_url && <img className="rev-photo" src={r.photo_url} alt="" onError={e => e.target.style.display = "none"} />}
       <div className="review-foot">
         <span>{new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-        {mine && <button className="del" onClick={onDelete}>Delete mine</button>}
+        {mine
+          ? <button className="del" onClick={onDelete}>Delete mine</button>
+          : <ModerationLinks targetType="review" targetId={r.id} targetUserId={r.user_id} targetLabel={(prof.username || "user") + "'s review"} username={prof.username} me={me} onBlocked={onBlocked} />}
       </div>
     </div>
   );

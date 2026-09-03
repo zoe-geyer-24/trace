@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Header from "../../../components/Header";
 import { getProfileByUsername, getPublicProfileData, getMyProfile, getFollowing, follow, unfollow } from "../../../lib/db";
+import { getBlockedIds, unblockUser } from "../../../lib/moderation";
+import { ModerationLinks } from "../../../components/Moderation";
 
 export default function PublicProfilePage() {
   const { username } = useParams();
@@ -11,6 +13,7 @@ export default function PublicProfilePage() {
   const [data, setData] = useState({ want: [], been: [], reviewCount: 0, followerCount: 0 });
   const [me, setMe] = useState(null);
   const [following, setFollowing] = useState([]);
+  const [blocked, setBlocked] = useState([]);
 
   async function load() {
     const p = await getProfileByUsername(decodeURIComponent(username));
@@ -19,7 +22,7 @@ export default function PublicProfilePage() {
     setData(await getPublicProfileData(p.id));
     const mine = await getMyProfile();
     setMe(mine);
-    if (mine) setFollowing(await getFollowing(mine.id));
+    if (mine) { setFollowing(await getFollowing(mine.id)); setBlocked(await getBlockedIds()); }
   }
   useEffect(() => { load(); }, [username]);
 
@@ -33,6 +36,14 @@ export default function PublicProfilePage() {
 
   const isMe = me && me.id === profile.id;
   const amFollowing = following.includes(profile.id);
+  const isBlocked = blocked.includes(profile.id);
+
+  if (isBlocked) return (
+    <div className="wrap"><Header />
+      <div className="empty"><div className="big">You've blocked {profile.username}.</div>Their reviews and activity are hidden from you.<br /><br />
+        <button className="btn btn-ghost" onClick={async () => { await unblockUser(profile.id); load(); }}>Unblock</button></div>
+    </div>
+  );
 
   async function toggleFollow() {
     if (!me) return router.push("/login");
@@ -71,6 +82,7 @@ export default function PublicProfilePage() {
               <button className={"btn " + (amFollowing ? "btn-ghost" : "btn-sage")} onClick={toggleFollow}>
                 {amFollowing ? "Following" : "Follow"}
               </button>
+              <ModerationLinks targetType="user" targetId={profile.id} targetUserId={profile.id} targetLabel={profile.username} username={profile.username} me={me} onBlocked={load} />
             </div>
           )}
 
