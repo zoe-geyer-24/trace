@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../../components/Header";
-import { signUp, signIn } from "../../lib/db";
+import { signUp, signIn, sendPasswordReset } from "../../lib/db";
 
 const SENSITIVITIES = [
   "Celiac disease", "Non-celiac gluten sensitivity", "Wheat allergy",
@@ -17,7 +17,18 @@ export default function LoginPage() {
   const [sensitivity, setSensitivity] = useState(SENSITIVITIES[0]);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
   const router = useRouter();
+
+  async function forgot() {
+    setErr(""); setMsg("");
+    if (!email.trim()) { setErr("Type your email above first, then tap \"Forgot your password?\" again."); return; }
+    setBusy(true);
+    const { error } = await sendPasswordReset(email.trim());
+    setBusy(false);
+    if (error) { setErr(error); return; }
+    setMsg("Check your email for a link to reset your password.");
+  }
 
   async function submit() {
     setErr(""); setBusy(true);
@@ -43,7 +54,8 @@ export default function LoginPage() {
           <div className="hint">So your reviews are tied to you and other celiacs know your sensitivity.</div>
           <div className="field"><label>Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} /></div>
           <div className="field"><label>Password</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} />
-            {mode === "up" && <div className="sub">At least 6 characters. Stored securely by Supabase.</div>}</div>
+            {mode === "up" && <div className="sub">At least 6 characters. Stored securely by Supabase.</div>}
+            {mode === "in" && <button type="button" className="btn-link" style={{ marginTop: 8 }} onClick={forgot} disabled={busy}>Forgot your password?</button>}</div>
           {mode === "up" && <>
             <div className="field"><label>Username</label><input value={username} onChange={e => setUsername(e.target.value)} placeholder="e.g. crumbhunter" /></div>
             <div className="field"><label>Your gluten sensitivity</label>
@@ -55,8 +67,9 @@ export default function LoginPage() {
             By creating an account you agree to our <a href="/privacy#guidelines">community guidelines</a>: no abusive, hateful, misleading, or unsafe content. Reports are reviewed within 24 hours and violators are removed.
           </div>}
           {err && <div className="err">{err}</div>}
+          {msg && <div className="sub" style={{ marginTop: 8, color: "var(--rye-deep)" }}>{msg}</div>}
           <div className="modal-actions">
-            <button className="btn btn-ghost" onClick={() => { setMode(mode === "up" ? "in" : "up"); setErr(""); }}>
+            <button className="btn btn-ghost" onClick={() => { setMode(mode === "up" ? "in" : "up"); setErr(""); setMsg(""); }}>
               {mode === "up" ? "I already have an account" : "Create one instead"}
             </button>
             <button className="btn btn-sage" onClick={submit} disabled={busy}>

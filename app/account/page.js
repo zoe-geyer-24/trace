@@ -72,10 +72,12 @@ export default function AccountPage() {
   const byId = id => rests.find(r => r.id === id);
   const wantPlaces = wantIds.map(byId).filter(Boolean);
 
-  const byOverall = reviewed.slice().sort((a, b) => b.myOverall - a.myOverall);
-  const safe = reviewed.filter(r => r.myGf >= 8).sort((a, b) => b.myGf - a.myGf);
-  const okay = reviewed.filter(r => r.myGf >= 5 && r.myGf < 8).sort((a, b) => b.myGf - a.myGf);
-  const unsafe = reviewed.filter(r => r.myGf < 5).sort((a, b) => b.myGf - a.myGf);
+  const byOverall = reviewed.slice().sort((a, b) => (b.myOverall ?? -1) - (a.myOverall ?? -1));
+  const hasGf = r => r.myGf != null;
+  const safe = reviewed.filter(r => hasGf(r) && r.myGf >= 8).sort((a, b) => b.myGf - a.myGf);
+  const okay = reviewed.filter(r => hasGf(r) && r.myGf >= 5 && r.myGf < 8).sort((a, b) => b.myGf - a.myGf);
+  const unsafe = reviewed.filter(r => hasGf(r) && r.myGf < 5).sort((a, b) => b.myGf - a.myGf);
+  const noGf = reviewed.filter(r => !hasGf(r));
 
   const PlaceRow = ({ r, rank }) => (
     <div className="rcard" onClick={() => router.push("/restaurant/" + r.id)}>
@@ -87,8 +89,8 @@ export default function AccountPage() {
         </div>
       </div>
       <div className="rcard-scores">
-        <div className="score-box"><div className="score-label">Your Overall</div><div className="score-num overall-num" style={{ fontSize: 20 }}>{r.myOverall}</div></div>
-        <div className="score-box"><div className="score-label">Your GF</div><div className="score-num gf-num" style={{ fontSize: 20 }}>{r.myGf}</div></div>
+        <div className="score-box"><div className="score-label">Your Overall</div><div className="score-num overall-num" style={{ fontSize: 20 }}>{r.myOverall ?? "–"}</div></div>
+        <div className="score-box"><div className="score-label">Your GF</div><div className="score-num gf-num" style={{ fontSize: 20 }}>{r.myGf ?? "–"}</div></div>
       </div>
     </div>
   );
@@ -158,6 +160,7 @@ export default function AccountPage() {
                 <SafetyGroup title="Felt safe eating here" cls="safe" items={safe} />
                 <SafetyGroup title="Felt okay eating here" cls="okay" items={okay} />
                 <SafetyGroup title="Felt unsafe eating here" cls="unsafe" items={unsafe} />
+                {noGf.length > 0 && <SafetyGroup title="No GF safety score yet" cls="okay" items={noGf} />}
               </div>}
 
         <div className="section-title" style={{ marginTop: 44 }}>Want to go</div>
