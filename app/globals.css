@@ -286,3 +286,10 @@ a { color:inherit; text-decoration:none; }
 .consent { font-family:"Helvetica Neue",Arial,sans-serif; font-size:11.5px; color:#8a7d6b; line-height:1.5; margin-top:4px; }
 .consent a { color:var(--rye-deep); }
 .report-reasons .check { text-transform:none; letter-spacing:0; font-weight:400; font-size:14px; color:var(--ink); margin-bottom:0; }
+
+/* iOS zooms into any text box under 16px and stays zoomed; keep form text at 16px on phones and tablets. */
+@media (max-width: 1024px) {
+  input, select, textarea, .search, .field input, .field select, .field textarea, .filterbar select { font-size:16px; }
+}
+.header-back { margin:14px 0 0; }
+html, body { overflow-x:hidden; }

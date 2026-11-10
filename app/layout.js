@@ -13,6 +13,8 @@ export const metadata = {
 export const viewport = {
   themeColor: "#f7f3e9",
   viewportFit: "cover",
+  // Stops iOS from zooming into text boxes and leaving the page zoomed.
+  maximumScale: 1,
 };
  
 export default function RootLayout({ children }) {

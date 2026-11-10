@@ -35,6 +35,8 @@ export async function POST(request) {
       await admin.storage.from(bucket).remove(files.map(f => uid + "/" + f.name));
     }
   }
+  // Their private block list (reports they filed are kept for moderation records).
+  await admin.storage.from("moderation").remove(["blocks/" + uid + ".json"]);
 
   await admin.from("profiles").delete().eq("id", uid);
 

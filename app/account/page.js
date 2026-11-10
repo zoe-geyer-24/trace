@@ -33,20 +33,26 @@ export default function AccountPage() {
   async function load() {
     const p = await getMyProfile(); setMe(p); setLoaded(true);
     if (!p) return;
-    setReviewed(await getMyReviewedPlaces(p.id));
-    const lists = await getMyLists(p.id);
+    // Fetch everything at once: each round trip can take a second on mobile networks.
+    const [reviewed, lists, following, followerN, rests, blockedIds] = await Promise.all([
+      getMyReviewedPlaces(p.id), getMyLists(p.id), getFollowing(p.id),
+      getFollowerCount(p.id), getRestaurants(), getBlockedIds(),
+    ]);
+    setReviewed(reviewed);
     setWantIds(lists.want);
-    setFollowingN((await getFollowing(p.id)).length);
-    setFollowerN(await getFollowerCount(p.id));
-    setRests(await getRestaurants());
-    const blockedIds = await getBlockedIds();
+    setFollowingN(following.length);
+    setFollowerN(followerN);
+    setRests(rests);
     if (blockedIds.length) {
       const all = await getAllProfiles();
       setBlockedUsers(blockedIds.map(id => all.find(u => u.id === id) || { id, username: "Deleted user" }));
     } else setBlockedUsers([]);
   }
 
-  async function unblock(uid) { await unblockUser(uid); load(); }
+  async function unblock(uid) {
+    setBlockedUsers(list => list.filter(u => u.id !== uid)); // update instantly, then sync
+    await unblockUser(uid); load();
+  }
   useEffect(() => { load(); }, []);
 
   function shareProfile() {

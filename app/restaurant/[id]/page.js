@@ -54,7 +54,7 @@ export default function RestaurantPage() {
     <div className="wrap">
       <Header />
       <div className="view">
-        <div className="back"><button className="btn-link" onClick={() => router.push("/")}>← Back</button></div>
+        <div className="back"><button className="btn-link" onClick={() => (window.history.length > 1 ? router.back() : router.push("/"))}>← Back</button></div>
         <div className="detail-head">
           <h2 className="detail-name">{rest.name}</h2>
           <div className="detail-meta">

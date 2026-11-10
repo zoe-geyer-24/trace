@@ -14,6 +14,16 @@ export default function Header() {
 
   async function handleSignOut() { await signOut(); setMe(null); router.push("/"); router.refresh(); }
 
+  // Inside the iOS app there is no browser back button or swipe-back, so every page
+  // that isn't a main tab gets a Back link. Pages with their own Back are skipped.
+  const TABS = ["/", "/map", "/recommendations", "/following", "/account"];
+  const OWN_BACK = ["/restaurant/", "/near-me"];
+  const showBack = !TABS.includes(path) && !OWN_BACK.some(pre => path.startsWith(pre));
+  function goBack() {
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push("/");
+  }
+
   const tab = (href, label) => (
     <Link href={href} className={path === href ? "on" : ""}>{label}</Link>
   );
@@ -37,6 +47,7 @@ export default function Header() {
             : <Link className="btn-link" href="/login">Sign in / sign up</Link>)}
         </span>
       </nav>
+      {showBack && <div className="back header-back"><button className="btn-link" onClick={goBack}>← Back</button></div>}
     </>
   );
 }
