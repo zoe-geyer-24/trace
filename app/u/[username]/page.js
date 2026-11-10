@@ -56,6 +56,12 @@ export default function PublicProfilePage() {
     <div className="rcard" onClick={() => router.push("/restaurant/" + r.id)}>
       <div><h3 className="rcard-name" style={{ fontSize: 19 }}>{r.name}</h3>
         <div className="rcard-meta">{[r.neighborhood, r.cuisine].filter(Boolean).join(" · ")}</div></div>
+      {(r.theirOverall != null || r.theirGf != null) && (
+        <div className="rcard-scores">
+          <div className="score-box"><div className="score-label">Their Overall</div><div className="score-num overall-num" style={{ fontSize: 20 }}>{r.theirOverall ?? "–"}</div></div>
+          <div className="score-box"><div className="score-label">Their GF</div><div className="score-num gf-num" style={{ fontSize: 20 }}>{r.theirGf ?? "–"}</div></div>
+        </div>
+      )}
     </div>
   );
 
