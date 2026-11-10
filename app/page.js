@@ -261,7 +261,7 @@ export default function BrowsePage() {
           rated.length === 0
             ? <div className="empty"><div className="big">No reviewed places yet.</div>Tap search to find any NYC restaurant and be the first to rate it.</div>
             : <>
-                <div className="list-head" style={{ marginTop: 0 }}>Top 5 for GF safety</div>
+                <div className="list-head" style={{ marginTop: 0 }}>Current top 5 places for gluten safety in NYC</div>
                 <div className="rlist">{ratedSorted.slice(0, 5).map(r => <RestCard key={r.id} r={r} />)}</div>
                 <div className="list-empty" style={{ marginTop: 16 }}>Search above or tap a category to find more places.</div>
               </>
